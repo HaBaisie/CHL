@@ -28,11 +28,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'hpbv()ep00boce&o0w7z1h)st148(*m@6@-
 DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
 # Update ALLOWED_HOSTS for Render deployment
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    os.getenv('RENDER_HOSTNAME', 'your-render-app.onrender.com'),  # Replace with your Render app URL
-]
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
