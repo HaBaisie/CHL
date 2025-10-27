@@ -1,4 +1,5 @@
 xhtml2pdf
+distutils==1.0.0
 Django>=5.1
 django-widget-tweaks==1.4.8
 sqlparse==0.3.1
