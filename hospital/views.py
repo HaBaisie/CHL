@@ -109,22 +109,26 @@ def is_patient(user):
 
 
 #---------AFTER ENTERING CREDENTIALS WE CHECK WHETHER USERNAME AND PASSWORD IS OF ADMIN,DOCTOR OR PATIENT
-def afterlogin_view(request):
-    if is_admin(request.user):
-        return redirect('admin-dashboard')
-    elif is_doctor(request.user):
-        accountapproval=models.Doctor.objects.all().filter(user_id=request.user.id,status=True)
-        if accountapproval:
-            return redirect('doctor-dashboard')
-        else:
-            return render(request,'hospital/doctor_wait_for_approval.html')
-    elif is_patient(request.user):
-        accountapproval=models.Patient.objects.all().filter(user_id=request.user.id,status=True)
-        if accountapproval:
-            return redirect('patient-dashboard')
-        else:
-            return render(request,'hospital/patient_wait_for_approval.html')
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 
+@login_required
+def afterlogin_view(request):
+    if request.user.groups.filter(name='ADMIN').exists():
+        return redirect('admin-dashboard')
+    elif request.user.groups.filter(name='DOCTOR').exists():
+        return redirect('doctor-dashboard')
+    elif request.user.groups.filter(name='PATIENT').exists():
+        return redirect('patient-dashboard')
+    elif request.user.groups.filter(name='PHARMACY').exists():
+        return redirect('pharmacy-dashboard')
+    elif request.user.groups.filter(name='LAB').exists():
+        return redirect('lab-dashboard')
+    else:
+        # Fallback: logout and show error
+        from django.contrib import messages
+        messages.error(request, "Invalid user role. Contact admin.")
+        return redirect('logout')
 
 
 
