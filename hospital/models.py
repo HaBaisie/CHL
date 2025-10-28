@@ -159,3 +159,35 @@ class LabResult(models.Model):
         return f"{self.test.code} – {self.patient.get_name}"
 
 
+# -------------------------------------------------
+# PHARMACY PROFILE MODEL
+# -------------------------------------------------
+class Pharmacy(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    profile_pic = models.ImageField(upload_to='profile_pic/PharmacyProfilePic/', null=True, blank=True)
+    address = models.CharField(max_length=40)
+    mobile = models.CharField(max_length=20, null=True)
+
+    @property
+    def get_name(self):
+        return self.user.first_name + " " + self.user.last_name
+
+    def __str__(self):
+        return f"Pharmacy: {self.get_name}"
+
+
+# -------------------------------------------------
+# LAB TECHNICIAN PROFILE MODEL
+# -------------------------------------------------
+class Lab(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    profile_pic = models.ImageField(upload_to='profile_pic/LabProfilePic/', null=True, blank=True)
+    address = models.CharField(max_length=40)
+    mobile = models.CharField(max_length=20, null=True)
+
+    @property
+    def get_name(self):
+        return self.user.first_name + " " + self.user.last_name
+
+    def __str__(self):
+        return f"Lab Technician: {self.get_name}"

@@ -1,8 +1,8 @@
 from django import forms
 from django.contrib.auth.models import User
+from django.forms import inlineformset_factory  # ← ADD THIS LINE
 from . import models
-
-
+from .models import DispensedDrug, LabResult, Drug, LabTest
 
 #for admin signup
 class AdminSigupForm(forms.ModelForm):
@@ -74,14 +74,14 @@ class ContactusForm(forms.Form):
 # -------------------------------------------------
 class DispenseDrugForm(forms.ModelForm):
     class Meta:
-        model = DispensedDrug
+        model = DispensedDrug  # Now recognized
         fields = ['drug', 'quantity', 'price_per_unit']
         widgets = {
             'price_per_unit': forms.NumberInput(attrs={'step': '0.01'}),
         }
 
 DispenseDrugFormSet = inlineformset_factory(
-    PatientEMR, DispensedDrug,
+    models.PatientEMR, DispensedDrug,  # use models.PatientEMR
     form=DispenseDrugForm, extra=1, can_delete=True
 )
 
@@ -90,7 +90,7 @@ DispenseDrugFormSet = inlineformset_factory(
 # -------------------------------------------------
 class LabResultForm(forms.ModelForm):
     class Meta:
-        model = LabResult
+        model = LabResult  # Now recognized
         fields = ['test', 'result_value', 'remarks']
 
 class PharmacyUserForm(forms.ModelForm):
