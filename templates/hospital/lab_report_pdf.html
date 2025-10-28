@@ -1,0 +1,14 @@
+<!DOCTYPE html><html><head><title>Lab Report</title>
+<style>body{font-family:Arial;margin:2cm;}</style></head><body>
+<h2>CHL Hospital – Laboratory Report</h2>
+<p><strong>Patient:</strong> {{ result.patient.get_name }}</p>
+<p><strong>Test:</strong> {{ result.test.code }} – {{ result.test.name }}</p>
+<p><strong>Result:</strong> {{ result.result_value }}</p>
+{% if result.test.normal_range %}
+<p><strong>Normal Range:</strong> {{ result.test.normal_range }}</p>
+{% endif %}
+{% if result.remarks %}
+<p><strong>Remarks:</strong> {{ result.remarks|linebreaks }}</p>
+{% endif %}
+<p><strong>Performed on:</strong> {{ result.performed_at|date:"d M Y H:i" }}</p>
+</body></html>

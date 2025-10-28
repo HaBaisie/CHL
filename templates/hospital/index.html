@@ -66,7 +66,18 @@
 
 <br><br><br><br>
 
-{% include "hospital/admin_doctor_patient_card.html" %}
+<div class="container">
+  <div class="row">
+    {% include "hospital/admin_doctor_patient_card.html" %}
+
+    <div class="col-md-3">
+      <a href="{% url 'pharmacy-signup' %}" class="btn btn-info btn-block">Pharmacy Sign-Up</a>
+    </div>
+    <div class="col-md-3">
+      <a href="{% url 'lab-signup' %}" class="btn btn-info btn-block">Lab Technician Sign-Up</a>
+    </div>
+  </div>
+</div>
 <br><br><br>
 
 

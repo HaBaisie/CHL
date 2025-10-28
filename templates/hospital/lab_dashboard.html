@@ -1,0 +1,14 @@
+{% extends 'hospital/lab_base.html' %}
+{% block content %}
+<h3>Select Patient to Add Lab Result</h3>
+<ul class="list-group">
+{% for p in patients %}
+  <li class="list-group-item d-flex justify-content-between">
+    {{ p.get_name }} ({{ p.mobile }})
+    <a href="{% url 'lab-add-result' p.id %}" class="btn btn-sm btn-primary">Add Result</a>
+  </li>
+{% empty %}
+  <li class="list-group-item">No admitted patients.</li>
+{% endfor %}
+</ul>
+{% endblock %}

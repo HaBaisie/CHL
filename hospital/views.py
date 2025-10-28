@@ -911,6 +911,125 @@ def contactus_view(request):
 #------------------------ ADMIN RELATED VIEWS END ------------------------------
 #---------------------------------------------------------------------------------
 
+# -------------------------------------------------------------------------
+# PHARMACY VIEWS
+# -------------------------------------------------------------------------
+@login_required(login_url='pharmacy-login')
+@user_passes_test(lambda u: u.groups.filter(name='PHARMACY').exists())
+def pharmacy_dashboard(request):
+    # show pending prescriptions (EMR with prescription field filled)
+    pending = PatientEMR.objects.filter(prescription__isnull=False).exclude(
+        dispensed_drugs__isnull=False).distinct()
+    context = {'pending': pending}
+    return render(request, 'hospital/pharmacy_dashboard.html', context)
 
 
+@login_required(login_url='pharmacy-login')
+@user_passes_test(lambda u: u.groups.filter(name='PHARMACY').exists())
+def pharmacy_dispense(request, emr_id):
+    emr = get_object_or_404(PatientEMR, pk=emr_id)
+    if request.method == 'POST':
+        formset = DispenseDrugFormSet(request.POST, instance=emr)
+        if formset.is_valid():
+            dispensed = formset.save(commit=False)
+            total = 0
+            for d in dispensed:
+                d.dispensed_by = request.user
+                d.save()
+                total += d.total
+            # create receipt
+            receipt = PharmacyReceipt.objects.create(
+                patient=emr.patient,
+                total_amount=total,
+                issued_by=request.user
+            )
+            receipt.dispensed_drugs.set(dispensed)
+            return redirect('pharmacy-receipt-pdf', receipt.id)
+    else:
+        formset = DispenseDrugFormSet(instance=emr)
 
+    context = {'emr': emr, 'formset': formset}
+    return render(request, 'hospital/pharmacy_dispense.html', context)
+
+
+# -------------------------------------------------------------------------
+# PDF RECEIPT
+# -------------------------------------------------------------------------
+def pharmacy_receipt_pdf(request, receipt_id):
+    receipt = get_object_or_404(PharmacyReceipt, pk=receipt_id)
+    context = {
+        'receipt': receipt,
+        'drugs': receipt.dispensed_drugs.all(),
+    }
+    return render_to_pdf('hospital/pharmacy_receipt_pdf.html', context)
+
+
+# -------------------------------------------------------------------------
+# LAB TECHNICIAN VIEWS
+# -------------------------------------------------------------------------
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
+def lab_dashboard(request):
+    patients = Patient.objects.filter(status=True)
+    return render(request, 'hospital/lab_dashboard.html', {'patients': patients})
+
+
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
+def lab_add_result(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    if request.method == 'POST':
+        form = LabResultForm(request.POST)
+        if form.is_valid():
+            result = form.save(commit=False)
+            result.patient = patient
+            result.performed_by = request.user
+            result.save()
+            return redirect('lab-report-pdf', result.id)
+    else:
+        form = LabResultForm()
+    return render(request, 'hospital/lab_add_result.html', {'form': form, 'patient': patient})
+
+
+def lab_report_pdf(request, result_id):
+    result = get_object_or_404(LabResult, pk=result_id)
+    return render_to_pdf('hospital/lab_report_pdf.html', {'result': result})
+
+def pharmacy_signup_view(request):
+    userForm = forms.PharmacyUserForm()
+    pharmacyForm = forms.PharmacyForm()
+    if request.method == 'POST':
+        userForm = forms.PharmacyUserForm(request.POST)
+        pharmacyForm = forms.PharmacyForm(request.POST, request.FILES)
+        if userForm.is_valid() and pharmacyForm.is_valid():
+            user = userForm.save(commit=False)
+            user.set_password(userForm.cleaned_data['password'])
+            user.save()
+            pharmacy = pharmacyForm.save(commit=False)
+            pharmacy.user = user
+            pharmacy.save()
+            g, _ = Group.objects.get_or_create(name='PHARMACY')
+            g.user_set.add(user)
+            return redirect('pharmacy-login')
+    return render(request, 'hospital/pharmacy_signup.html',
+                  {'userForm': userForm, 'pharmacyForm': pharmacyForm})
+
+
+def lab_signup_view(request):
+    userForm = forms.LabUserForm()
+    labForm = forms.LabForm()
+    if request.method == 'POST':
+        userForm = forms.LabUserForm(request.POST)
+        labForm = forms.LabForm(request.POST, request.FILES)
+        if userForm.is_valid() and labForm.is_valid():
+            user = userForm.save(commit=False)
+            user.set_password(userForm.cleaned_data['password'])
+            user.save()
+            lab = labForm.save(commit=False)
+            lab.user = user
+            lab.save()
+            g, _ = Group.objects.get_or_create(name='LAB')
+            g.user_set.add(user)
+            return redirect('lab-login')
+    return render(request, 'hospital/lab_signup.html',
+                  {'userForm': userForm, 'labForm': labForm})

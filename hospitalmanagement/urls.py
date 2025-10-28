@@ -96,3 +96,26 @@ urlpatterns +=[
 
 ]
 
+# -------------------------------------------------------------------------
+# PHARMACY URLS
+# -------------------------------------------------------------------------
+urlpatterns += [
+    path('pharmacy-dashboard', views.pharmacy_dashboard, name='pharmacy-dashboard'),
+    path('pharmacy-dispense/<int:emr_id>/', views.pharmacy_dispense, name='pharmacy-dispense'),
+    path('pharmacy-receipt-pdf/<int:receipt_id>/', views.pharmacy_receipt_pdf, name='pharmacy-receipt-pdf'),
+
+    path('pharmacy-login', LoginView.as_view(template_name='hospital/pharmacy_login.html'), name='pharmacy-login'),
+    path('pharmacy-signup', views.pharmacy_signup_view, name='pharmacy-signup'),
+]
+
+# -------------------------------------------------------------------------
+# LAB URLS
+# -------------------------------------------------------------------------
+urlpatterns += [
+    path('lab-dashboard', views.lab_dashboard, name='lab-dashboard'),
+    path('lab-add-result/<int:patient_id>/', views.lab_add_result, name='lab-add-result'),
+    path('lab-report-pdf/<int:result_id>/', views.lab_report_pdf, name='lab-report-pdf'),
+
+    path('lab-login', LoginView.as_view(template_name='hospital/lab_login.html'), name='lab-login'),
+    path('lab-signup', views.lab_signup_view, name='lab-signup'),
+]

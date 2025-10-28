@@ -1,0 +1,21 @@
+{% extends 'hospital/pharmacy_base.html' %}
+{% block content %}
+<h4>Dispense for {{ emr.patient.get_name }}</h4>
+<p><strong>Prescription:</strong> {{ emr.prescription|linebreaks }}</p>
+
+<form method="post">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  <table class="table table-bordered">
+    {% for form in formset %}
+      <tr>
+        <td>{{ form.drug }}</td>
+        <td>{{ form.quantity }}</td>
+        <td>{{ form.price_per_unit }}</td>
+        <td>{% if form.instance.pk %}{{ form.DELETE }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  <button type="submit" class="btn btn-success">Save & Generate Receipt</button>
+</form>
+{% endblock %}

@@ -90,4 +90,72 @@ class PatientDischargeDetails(models.Model):
     OtherCharge=models.PositiveIntegerField(null=False)
     total=models.PositiveIntegerField(null=False)
 
+# -------------------------------------------------
+# 1. DRUG CATALOGUE (Pharmacy)
+# -------------------------------------------------
+class Drug(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    unit = models.CharField(max_length=30)          # e.g. Tablet, ml, vial
+    default_price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"{self.name} ({self.unit})"
+
+# -------------------------------------------------
+# 2. DISPENSED DRUGS (linked to a prescription)
+# -------------------------------------------------
+class DispensedDrug(models.Model):
+    emr = models.ForeignKey(PatientEMR, on_delete=models.CASCADE, related_name='dispensed_drugs')
+    drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField()
+    price_per_unit = models.DecimalField(max_digits=8, decimal_places=2)   # can differ from default
+    dispensed_at = models.DateTimeField(auto_now_add=True)
+    dispensed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    @property
+    def total(self):
+        return self.quantity * self.price_per_unit
+
+    def __str__(self):
+        return f"{self.quantity} × {self.drug.name}"
+
+# -------------------------------------------------
+# 3. PHARMACY RECEIPT (one per dispense session)
+# -------------------------------------------------
+class PharmacyReceipt(models.Model):
+    dispensed_drugs = models.ManyToManyField(DispensedDrug)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    issued_at = models.DateTimeField(auto_now_add=True)
+    issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"Receipt #{self.pk} – {self.patient.get_name}"
+
+
+# -------------------------------------------------
+# 4. LAB TEST CATALOGUE
+# -------------------------------------------------
+class LabTest(models.Model):
+    code = models.CharField(max_length=20, unique=True)      # e.g. CBC, LFT
+    name = models.CharField(max_length=150)
+    normal_range = models.CharField(max_length=200, blank=True)
+
+    def __str__(self):
+        return f"{self.code} – {self.name}"
+
+# -------------------------------------------------
+# 5. LAB RESULT (one per test per patient)
+# -------------------------------------------------
+class LabResult(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    test = models.ForeignKey(LabTest, on_delete=models.PROTECT)
+    result_value = models.CharField(max_length=200)
+    remarks = models.TextField(blank=True)
+    performed_at = models.DateTimeField(auto_now_add=True)
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"{self.test.code} – {self.patient.get_name}"
+
 

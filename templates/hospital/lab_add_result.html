@@ -1,0 +1,9 @@
+{% extends 'hospital/lab_base.html' %}
+{% block content %}
+<h4>Add Lab Result – {{ patient.get_name }}</h4>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" class="btn btn-success">Save & Print Report</button>
+</form>
+{% endblock %}
