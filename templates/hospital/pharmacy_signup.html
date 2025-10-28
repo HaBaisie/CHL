@@ -1,0 +1,60 @@
+{% extends 'hospital/homebase.html' %}
+{% load widget_tweaks %}
+{% block content %}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card mt-5">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>Pharmacy Staff Registration</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <h5 class="mb-3">User Account</h5>
+                        <div class="form-group">
+                            <label>First Name</label>
+                            {{ userForm.first_name|add_class:"form-control" }}
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            {{ userForm.last_name|add_class:"form-control" }}
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            {{ userForm.username|add_class:"form-control" }}
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            {{ userForm.password|add_class:"form-control" }}
+                        </div>
+
+                        <hr>
+                        <h5 class="mb-3">Profile Information</h5>
+                        <div class="form-group">
+                            <label>Address</label>
+                            {{ pharmacyForm.address|add_class:"form-control" }}
+                        </div>
+                        <div class="form-group">
+                            <label>Mobile</label>
+                            {{ pharmacyForm.mobile|add_class:"form-control" }}
+                        </div>
+                        <div class="form-group">
+                            <label>Profile Picture (Optional)</label>
+                            {{ pharmacyForm.profile_pic|add_class:"form-control" }}
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-block mt-4">Register Pharmacy Staff</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'pharmacy-login' %}">Already have an account? Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
