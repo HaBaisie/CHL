@@ -1,11 +1,6 @@
 {% extends 'hospital/homebase.html' %}
 {% load static %}
-
-
-
 {% block content %}
-
-
 <head>
   <style media="screen">
     .jumbotron {
@@ -15,19 +10,13 @@
       background-size: cover;
       background-repeat: no-repeat;
     }
-
     .jumbotron h5,
     h3 {
       text-align: center;
     }
-
-
     .alert {
       margin: 0px;
     }
-
-
-
     .glow {
       font-size: 50px;
       color: white;
@@ -36,40 +25,51 @@
       -moz-animation: glow 1s ease-in-out infinite alternate;
       animation: glow 1s ease-in-out infinite alternate;
     }
-
     @-webkit-keyframes glow {
       from {
         text-shadow: 0 0 10px #eeeeee, 0 0 20px #000000, 0 0 30px #000000, 0 0 40px #000000, 0 0 50px #9554b3, 0 0 60px #9554b3, 0 0 70px #9554b3;
       }
-
       to {
         text-shadow: 0 0 20px #eeeeee, 0 0 30px #fa2d2d, 0 0 40px #fa2d2d, 0 0 50px #fa2d2d, 0 0 60px #fa2d2d, 0 0 70px #fa2d2d, 0 0 80px #fa2d2d;
       }
     }
+    /* New style for the logo */
+    .logo-img {
+      display: block;
+      margin: 20px auto;
+      width: 120px;          /* adjust size as you like */
+      height: auto;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
-<br>
-<br>
 
-<div class="jumbotron" style="margin-bottom: 0px;margin-top: 0px;">
+<br><br>
+<div class="jumbotron" style="margin-bottom:0;margin-top:0;">
   <br>
   <h5 class="display-3 glow">CHL HOSPITAL</h5>
+
+  <!-- ==== NEW LOGO ==== -->
+  <img src="https://media.licdn.com/dms/image/v2/D4E0BAQEMvW03FLNo1A/company-logo_200_200/B4EZi4SXvOGUAI-/0/1755438480742?e=2147483647&v=beta&t=-s_HbIV9BGuHl7wWEQCD2d1o_SYaE390G00yww5MW94"
+       alt="CHL Hospital Logo"
+       class="logo-img">
+  <!-- =================== -->
+
   <br><br><br><br><br>
   <p>
-  <h3>Emergency ?</h3>
-
-  <p class="lead">
-    <a class="btn btn-danger btn-lg" href="/patientclick" role="button">Take Appointment Now!</a>
+    <h3>Emergency ?</h3>
+    <p class="lead">
+      <a class="btn btn-danger btn-lg" href="/patientclick" role="button">Take Appointment Now!</a>
+    </p>
   </p>
   <br><br>
 </div>
 
 <br><br><br><br>
-
 <div class="container">
   <div class="row">
     {% include "hospital/admin_doctor_patient_card.html" %}
-
     <div class="col-md-3">
       <a href="{% url 'pharmacy-signup' %}" class="btn btn-info btn-block">Pharmacy Sign-Up</a>
     </div>
@@ -79,6 +79,4 @@
   </div>
 </div>
 <br><br><br>
-
-
 {% endblock content %}
