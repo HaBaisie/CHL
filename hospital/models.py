@@ -106,19 +106,18 @@ class Drug(models.Model):
 # -------------------------------------------------
 class DispensedDrug(models.Model):
     emr = models.ForeignKey(PatientEMR, on_delete=models.CASCADE, related_name='dispensed_drugs')
-    drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
+    drug_name = models.CharField(max_length=200)  # NEW: Free text
     quantity = models.PositiveIntegerField()
-    price_per_unit = models.DecimalField(max_digits=8, decimal_places=2)   # can differ from default
-    dispensed_at = models.DateTimeField(auto_now_add=True)
+    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     dispensed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    dispensed_at = models.DateTimeField(auto_now_add=True)
 
-    @property
     def total(self):
         return self.quantity * self.price_per_unit
 
     def __str__(self):
-        return f"{self.quantity} × {self.drug.name}"
-
+        return f"{self.drug_name} x {self.quantity}"
+    
 # -------------------------------------------------
 # 3. PHARMACY RECEIPT (one per dispense session)
 # -------------------------------------------------
@@ -149,15 +148,15 @@ class LabTest(models.Model):
 # -------------------------------------------------
 class LabResult(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    test = models.ForeignKey(LabTest, on_delete=models.PROTECT)
+    test_name = models.CharField(max_length=150)  # NEW: Free text
     result_value = models.CharField(max_length=200)
     remarks = models.TextField(blank=True)
     performed_at = models.DateTimeField(auto_now_add=True)
     performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
-        return f"{self.test.code} – {self.patient.get_name}"
-
+        return f"{self.test_name} – {self.patient.get_name}"
+    
 
 # -------------------------------------------------
 # PHARMACY PROFILE MODEL

@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.forms import inlineformset_factory  # ← ADD THIS LINE
 from . import models
 from .models import DispensedDrug, LabResult, Drug, LabTest
-
+from .models import DispensedDrug, LabResult, Drug, LabTest, PatientEMR
 #for admin signup
 class AdminSigupForm(forms.ModelForm):
     class Meta:
@@ -72,17 +72,47 @@ class ContactusForm(forms.Form):
 # -------------------------------------------------
 # Pharmacy forms
 # -------------------------------------------------
+# -------------------------------------------------
+# Pharmacy forms
+# -------------------------------------------------
 class DispenseDrugForm(forms.ModelForm):
     class Meta:
-        model = DispensedDrug  # Now recognized
-        fields = ['drug', 'quantity', 'price_per_unit']
+        model = DispensedDrug
+        fields = ['drug_name', 'quantity', 'price_per_unit']
         widgets = {
-            'price_per_unit': forms.NumberInput(attrs={'step': '0.01'}),
+            'drug_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., Paracetamol 500mg'
+            }),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1,
+                'placeholder': 'Qty'
+            }),
+            'price_per_unit': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'Price'
+            }),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        qty = cleaned_data.get('quantity')
+        price = cleaned_data.get('price_per_unit')
+        if qty and price:
+            cleaned_data['total'] = qty * price
+        return cleaned_data
+
+
+# CORRECTED: Add `fields` and `extra`
 DispenseDrugFormSet = inlineformset_factory(
-    models.PatientEMR, DispensedDrug,  # use models.PatientEMR
-    form=DispenseDrugForm, extra=1, can_delete=True
+    models.PatientEMR,           # Parent model
+    DispensedDrug,               # Child model
+    form=DispenseDrugForm,
+    fields=('drug_name', 'quantity', 'price_per_unit'),  # REQUIRED
+    extra=3,                     # Show 3 blank rows
+    can_delete=True
 )
 
 # -------------------------------------------------
@@ -90,8 +120,23 @@ DispenseDrugFormSet = inlineformset_factory(
 # -------------------------------------------------
 class LabResultForm(forms.ModelForm):
     class Meta:
-        model = LabResult  # Now recognized
-        fields = ['test', 'result_value', 'remarks']
+        model = LabResult
+        fields = ['test_name', 'result_value', 'remarks']
+        widgets = {
+            'test_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., Full Blood Count (FBC)'
+            }),
+            'result_value': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., 12.5 g/dL'
+            }),
+            'remarks': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                '`placeholder': 'Optional notes'
+            }),
+        }
 
 class PharmacyUserForm(forms.ModelForm):
     class Meta:

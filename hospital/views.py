@@ -1,13 +1,35 @@
-from django.shortcuts import render,redirect,reverse
-from . import forms,models
-from .models import PatientEMR, DispensedDrug, Drug
-from django.db.models import Sum
-from django.contrib.auth.models import Group
-from django.http import HttpResponseRedirect
+from django.shortcuts import render, redirect, reverse, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import Group, User
+from django.contrib import messages
+from django.http import HttpResponse, HttpResponseRedirect
 from django.core.mail import send_mail
-from django.contrib.auth.decorators import login_required,user_passes_test
-from datetime import datetime,timedelta,date
 from django.conf import settings
+from django.db.models import Sum
+from datetime import datetime, timedelta, date
+from .forms import LabResultForm
+# App imports
+from . import forms, models
+from .models import (
+    PatientEMR, DispensedDrug, Drug, 
+    PharmacyReceipt, LabResult, Patient
+)
+
+from django.forms import inlineformset_factory
+
+DispenseDrugFormSet = inlineformset_factory(
+    PatientEMR,
+    DispensedDrug,
+    form=forms.DispenseDrugForm,
+    fields=('drug_name', 'quantity', 'price_per_unit'),  # ← CORRECT
+    extra=3,
+    can_delete=True
+)
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .models import PatientEMR, DispensedDrug, PharmacyReceipt
+from .forms import DispenseDrugFormSet
 
 # Create your views here.
 def home_view(request):
@@ -462,14 +484,35 @@ from django.template import Context
 from django.http import HttpResponse
 
 
-def render_to_pdf(template_src, context_dict):
-    template = get_template(template_src)
-    html  = template.render(context_dict)
+# In hospital/views.py
+
+from weasyprint import HTML
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+import io
+
+def render_to_pdf(template_src, context_dict={}):
+    html_string = render_to_string(template_src, context_dict)
+    html = HTML(string=html_string, base_url=None)
+    
+    # Use BytesIO to avoid file system
     result = io.BytesIO()
-    pdf = pisa.pisaDocument(io.BytesIO(html.encode("ISO-8859-1")), result)
-    if not pdf.err:
-        return HttpResponse(result.getvalue(), content_type='application/pdf')
-    return
+    
+    # CRITICAL: Force UTF-8 encoding
+    html.write_pdf(
+        target=result,
+        presentational_hints=True,
+        font_config=None,
+        # Add this to ensure UTF-8
+        encoding='utf-8'
+    )
+    
+    result.seek(0)
+    pdf = result.getvalue()
+    
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="receipt.pdf"'
+    return response
 
 
 
@@ -929,45 +972,96 @@ def pharmacy_dashboard(request):
     return render(request, 'hospital/pharmacy_dashboard.html', context)
 
 
+   # <-- make sure this is the inlineformset_factory we defined
+
+
 @login_required(login_url='pharmacy-login')
 @user_passes_test(lambda u: u.groups.filter(name='PHARMACY').exists())
 def pharmacy_dispense(request, emr_id):
+    """
+    Pharmacy staff can type any drug name, set qty & price, and generate a receipt.
+    """
     emr = get_object_or_404(PatientEMR, pk=emr_id)
+
+    # ------------------------------------------------------------------
+    # 1. Prevent double-dispensing
+    # ------------------------------------------------------------------
+    if DispensedDrug.objects.filter(emr=emr).exists():
+        messages.error(request, "This prescription has already been dispensed.")
+        return redirect('pharmacy-dashboard')
+
+    # ------------------------------------------------------------------
+    # 2. Handle POST → Save drugs + create receipt
+    # ------------------------------------------------------------------
     if request.method == 'POST':
         formset = DispenseDrugFormSet(request.POST, instance=emr)
+
         if formset.is_valid():
-            dispensed = formset.save(commit=False)
-            total = 0
-            for d in dispensed:
-                d.dispensed_by = request.user
-                d.save()
-                total += d.total
-            # create receipt
+            # Save each drug (commit=False so we can set extra fields)
+            dispensed_drugs = formset.save(commit=False)
+            grand_total = 0
+
+            for drug in dispensed_drugs:
+                # Link to the current EMR & pharmacist
+                drug.emr = emr
+                drug.dispensed_by = request.user
+
+                # Save to DB
+                drug.save()
+
+                # Add line total
+                grand_total += drug.total()   # quantity * price_per_unit
+
+            # ------------------------------------------------------------------
+            # 3. Create the PharmacyReceipt
+            # ------------------------------------------------------------------
             receipt = PharmacyReceipt.objects.create(
                 patient=emr.patient,
-                total_amount=total,
+                total_amount=grand_total,
                 issued_by=request.user
             )
-            receipt.dispensed_drugs.set(dispensed)
+            receipt.dispensed_drugs.set(dispensed_drugs)
+
+            messages.success(request, "Drugs dispensed – receipt generated!")
             return redirect('pharmacy-receipt-pdf', receipt.id)
+
+        else:
+            # If formset invalid, fall through to re-render with errors
+            messages.error(request, "Please correct the errors below.")
+
     else:
+        # GET request → fresh empty formset (3 blank rows)
         formset = DispenseDrugFormSet(instance=emr)
 
-    context = {'emr': emr, 'formset': formset}
+    # ------------------------------------------------------------------
+    # 4. Render the page
+    # ------------------------------------------------------------------
+    context = {
+        'emr': emr,
+        'formset': formset,
+    }
     return render(request, 'hospital/pharmacy_dispense.html', context)
-
-
 # -------------------------------------------------------------------------
 # PDF RECEIPT
 # -------------------------------------------------------------------------
+from django.shortcuts import get_object_or_404
+from django.utils import formats
+from decimal import Decimal
+
 def pharmacy_receipt_pdf(request, receipt_id):
     receipt = get_object_or_404(PharmacyReceipt, pk=receipt_id)
+
+    # Get dispensed drugs
+    drugs = receipt.dispensed_drugs.all()
+
     context = {
         'receipt': receipt,
-        'drugs': receipt.dispensed_drugs.all(),
+        'drugs': drugs,  # ← PASS DRUGS
+        'patient': receipt.patient,
+        'issued_by': receipt.issued_by.get_full_name() if receipt.issued_by else "Pharmacy",
+        'date': receipt.issued_at.strftime("%d %B %Y"),
     }
     return render_to_pdf('hospital/pharmacy_receipt_pdf.html', context)
-
 
 # -------------------------------------------------------------------------
 # LAB TECHNICIAN VIEWS
@@ -978,11 +1072,11 @@ def lab_dashboard(request):
     patients = Patient.objects.filter(status=True)
     return render(request, 'hospital/lab_dashboard.html', {'patients': patients})
 
-
 @login_required(login_url='lab-login')
 @user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
 def lab_add_result(request, patient_id):
     patient = get_object_or_404(Patient, pk=patient_id)
+
     if request.method == 'POST':
         form = LabResultForm(request.POST)
         if form.is_valid():
@@ -990,12 +1084,31 @@ def lab_add_result(request, patient_id):
             result.patient = patient
             result.performed_by = request.user
             result.save()
+            messages.success(request, f"Lab result saved for {patient.get_name}")
             return redirect('lab-report-pdf', result.id)
     else:
         form = LabResultForm()
-    return render(request, 'hospital/lab_add_result.html', {'form': form, 'patient': patient})
 
+    return render(request, 'hospital/lab_add_result.html', {
+        'form': form,
+        'patient': patient,
+    })
+# views.py
+from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .models import Patient, LabResult
+from .models import Patient, PatientEMR, LabResult
+@login_required(login_url='doctor-login')
+@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
+def doctor_view_lab_results(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    lab_results = LabResult.objects.filter(patient=patient).order_by('-performed_at')
 
+    context = {
+        'patient': patient,
+        'lab_results': lab_results,
+    }
+    return render(request, 'hospital/doctor_lab_results.html', context)
 def lab_report_pdf(request, result_id):
     result = get_object_or_404(LabResult, pk=result_id)
     return render_to_pdf('hospital/lab_report_pdf.html', {'result': result})
@@ -1038,3 +1151,31 @@ def lab_signup_view(request):
             return redirect('lab-login')
     return render(request, 'hospital/lab_signup.html',
                   {'userForm': userForm, 'labForm': labForm})
+# ------------------------------------------------------------------
+# DOCTOR – view patient EMR (the view that was missing)
+# ------------------------------------------------------------------
+@login_required(login_url='doctor-login')
+@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
+def doctor_emr_view(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    emr_records = PatientEMR.objects.filter(patient=patient).order_by('-date')
+    context = {
+        'patient': patient,
+        'emr_records': emr_records,
+    }
+    return render(request, 'hospital/doctor_view_patient_emr.html', context)
+
+
+# ------------------------------------------------------------------
+# DOCTOR – view lab results for a patient
+# ------------------------------------------------------------------
+@login_required(login_url='doctor-login')
+@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
+def doctor_view_lab_results(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    lab_results = LabResult.objects.filter(patient=patient).order_by('-performed_at')
+    context = {
+        'patient': patient,
+        'lab_results': lab_results,
+    }
+    return render(request, 'hospital/doctor_lab_results.html', context)
