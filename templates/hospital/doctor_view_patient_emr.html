@@ -1,0 +1,108 @@
+{% extends 'hospital/doctor_base.html' %}
+{% load static %}
+
+{% block title %}EMR - {{ patient.get_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 text-primary mb-0">
+            <i class="fas fa-notes-medical me-2"></i>
+            Medical Records – {{ patient.get_name }}
+        </h2>
+        <div>
+            <a href="{% url 'doctor-add-emr' patient.id %}" class="btn btn-success btn-sm me-2">
+                <i class="fas fa-plus"></i> Add EMR
+            </a>
+            <a href="{% url 'doctor-view-lab-results' patient.id %}" class="btn btn-info btn-sm me-2">
+                <i class="fas fa-vial"></i> View Lab Results
+            </a>
+            <a href="{% url 'doctor-view-patient-vitals' patient.id %}" class="btn btn-warning btn-sm">
+                <i class="fas fa-heartbeat"></i> View Vitals
+            </a>
+        </div>
+    </div>
+
+    {% if vitals %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-heartbeat me-2"></i>Latest Vital Signs
+                <small class="text-muted">({{ vitals.timestamp|date:"d M Y H:i" }})</small>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <p class="mb-2">
+                        <strong>Temperature:</strong><br>
+                        {{ vitals.temperature }}°C
+                    </p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-2">
+                        <strong>Blood Pressure:</strong><br>
+                        {{ vitals.blood_pressure }} mmHg
+                    </p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-2">
+                        <strong>Pulse Rate:</strong><br>
+                        {{ vitals.pulse_rate }} bpm
+                    </p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-2">
+                        <strong>O₂ Saturation:</strong><br>
+                        {{ vitals.oxygen_saturation }}%
+                    </p>
+                </div>
+            </div>
+            {% if vitals.notes %}
+            <p class="mb-0 mt-2">
+                <strong>Notes:</strong> {{ vitals.notes }}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Diagnosis</th>
+                            <th>Symptoms</th>
+                            <th>Treatment</th>
+                            <th>Prescription</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in emr_records %}
+                        <tr>
+                            <td>{{ record.date|date:"d M Y" }}</td>
+                            <td>{{ record.diagnosis|default:"—" }}</td>
+                            <td>{{ record.symptoms|default:"—" }}</td>
+                            <td>{{ record.treatment|default:"—" }}</td>
+                            <td>{{ record.prescription|default:"—" }}</td>
+                            <td>{{ record.notes|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                No EMR records yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

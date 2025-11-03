@@ -1,0 +1,60 @@
+{% extends 'hospital/admin_base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Patient List</h3>
+        <div>
+            <span class="text-muted">{{ nurse.get_name }}</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Active Patients</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Patient Name</th>
+                            <th>Contact</th>
+                            <th>Assigned Doctor</th>
+                            <th>Admit Date</th>
+                            <th>Symptoms</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients %}
+                            <tr>
+                                <td>{{ patient.get_name }}</td>
+                                <td>{{ patient.mobile }}</td>
+                                <td>
+                                    {% if patient.assignedDoctorId %}
+                                        {{ patient.assignedDoctorId|get_doctor_name }}
+                                    {% else %}
+                                        Not Assigned
+                                    {% endif %}
+                                </td>
+                                <td>{{ patient.admitDate|date:"d/m/Y" }}</td>
+                                <td>{{ patient.symptoms|truncatechars:30 }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'nurse-add-vitals' patient.id %}" class="btn btn-primary btn-sm">Add Vitals</a>
+                                    <a href="{% url 'nurse-view-vitals' patient.id %}" class="btn btn-info btn-sm">View History</a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-3">No active patients found.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

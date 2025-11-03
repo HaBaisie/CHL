@@ -1,0 +1,89 @@
+{% extends 'hospital/admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Discharge Patient</h3>
+        <div>
+            <span class="text-muted">{{ accountant.get_name }}</span>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Patient Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ patient.get_name }}</p>
+                    <p><strong>Mobile:</strong> {{ patient.mobile }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Admit Date:</strong> {{ patient.admitDate|date:"d/m/Y" }}</p>
+                    <p><strong>Days Spent:</strong> {{ days_spent }} days</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Discharge Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Room Charges per Day (₦)</label>
+                        {{ form.room_charge }}
+                        <small class="text-muted">Will be multiplied by {{ days_spent }} days</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Doctor Fee (₦)</label>
+                        {{ form.doctor_fee }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label>Other Charges (₦)</label>
+                    {{ form.other_charges }}
+                </div>
+
+                <div class="mb-3">
+                    <label>Discharge Summary</label>
+                    {{ form.discharge_summary }}
+                </div>
+
+                {% if pharmacy_receipts %}
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">Pending Pharmacy Charges</h6>
+                    <ul class="mb-0">
+                        {% for receipt in pharmacy_receipts %}
+                        <li>Receipt #{{ receipt.id }}: ₦{{ receipt.total_amount|floatformat:2 }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if lab_results %}
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">Lab Tests Performed</h6>
+                    <ul class="mb-0">
+                        {% for result in lab_results %}
+                        <li>{{ result.test_name }} ({{ result.performed_at|date:"d/m/Y" }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'account-patient-list' %}" class="btn btn-secondary">Back</a>
+            <button type="submit" class="btn btn-warning">Process Discharge</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'hospital/admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Record Vital Signs</h3>
+        <div>
+            <span class="text-muted">{{ nurse.get_name }}</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Patient: {{ patient.get_name }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.temperature.id_for_label }}">Temperature (°C)</label>
+                        {{ form.temperature }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.blood_pressure.id_for_label }}">Blood Pressure (mmHg)</label>
+                        {{ form.blood_pressure }}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.pulse_rate.id_for_label }}">Pulse Rate (bpm)</label>
+                        {{ form.pulse_rate }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.respiratory_rate.id_for_label }}">Respiratory Rate (breaths/min)</label>
+                        {{ form.respiratory_rate }}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.oxygen_saturation.id_for_label }}">Oxygen Saturation (%)</label>
+                        {{ form.oxygen_saturation }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.weight.id_for_label }}">Weight (kg)</label>
+                        {{ form.weight }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.height.id_for_label }}">Height (m)</label>
+                        {{ form.height }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.notes.id_for_label }}">Additional Notes</label>
+                    {{ form.notes }}
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">Back</button>
+                    <button type="submit" class="btn btn-primary">Save Vitals</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

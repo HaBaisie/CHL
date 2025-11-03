@@ -1,0 +1,149 @@
+{% extends 'hospital/pharmacy_base.html' %}
+{% load static %}
+
+{% block title %}Pharmacy Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 text-primary mb-0">
+            <i class="fas fa-prescription-bottle-alt me-2"></i>
+            Pending Prescriptions
+        </h2>
+        <div class="d-flex align-items-center">
+            <div class="text-muted small me-3">
+                <i class="far fa-clock"></i> Last updated: {{ now|date:"d M Y, H:i" }}
+            </div>
+            <a href="{% url 'pharmacy-history' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-history me-1"></i>
+                Dispense History
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Card -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Pending
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ pending|length }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-primary opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="card shadow-sm border-0 rounded-lg">
+        <div class="card-header bg-gradient-primary text-white py-3">
+            <h5 class="mb-0">
+                <i class="fas fa-list-ul me-2"></i>
+                Prescriptions Awaiting Dispense
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Patient</th>
+                            <th>Doctor</th>
+                            <th>Date</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emr in pending %}
+                        <tr class="border-start border-start-3 border-primary">
+                            <td class="ps-4 fw-semibold">
+                                <i class="fas fa-user me-2 text-muted"></i>
+                                {{ emr.patient.get_name }}
+                            </td>
+                            <td>
+                                <i class="fas fa-user-md me-2 text-primary"></i>
+                                Dr. {{ emr.doctor.get_name }}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="far fa-calendar-alt me-1"></i>
+                                    {{ emr.date|date:"d M Y" }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'pharmacy-dispense' emr.id %}"
+                                   class="btn btn-success btn-sm px-4 shadow-sm"
+                                   title="Dispense Now">
+                                    <i class="fas fa-prescription me-1"></i>
+                                    Dispense
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="fas fa-check-circle fa-3x text-success mb-3 opacity-50"></i>
+                                    <h5 class="text-muted">No pending prescriptions</h5>
+                                    <p class="text-muted small">All prescriptions have been dispensed.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light text-muted small py-2">
+            <i class="fas fa-info-circle me-1"></i>
+            Only prescriptions with filled details and not yet dispensed are shown.
+        </div>
+    </div>
+</div>
+
+<!-- Custom Styles -->
+<style>
+    .border-left-primary {
+        border-left: 4px solid #4e73df !important;
+    }
+    .bg-gradient-primary {
+        background: linear-gradient(87deg, #4e73df, #224abe) !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fc !important;
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+    .btn-success {
+        background-color: #1cc88a;
+        border-color: #1cc88a;
+        transition: all 0.2s;
+    }
+    .btn-success:hover {
+        background-color: #17a673;
+        border-color: #17a673;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(28, 200, 138, 0.3);
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+
+<!-- Font Awesome for Icons -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+{% endblock %}

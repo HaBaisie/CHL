@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pharmacy Receipt</title>
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12px; color: #333; }
+        .header { text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ccc; padding: 8px; }
+        th { background-color: #f0f0f0; }
+        .total { font-weight: bold; }
+        .text-right { text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>CHL HOSPITAL</h2>
+        <p>59, Adeleke road, Lamodi Road, Offa, Nigeria | Tel: 0800-000-000</p>
+        <p><strong>Pharmacy Receipt</strong></p>
+    </div>
+
+    <p><strong>Patient:</strong> {{ patient.get_name }}</p>
+    <p><strong>Issued:</strong> {{ date }}</p>
+    <p><strong>Receipt #:</strong> {{ receipt.id }}</p>
+    <p><strong>Issued by:</strong> {{ issued_by }}</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Drug</th>
+                <th>Qty</th>
+                <th>Price/Unit</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for drug in drugs %}
+            <tr>
+                <td><strong>{{ drug.drug_name }}</strong></td>
+                <td>{{ drug.quantity }}</td>
+                <td>₦{{ drug.price_per_unit|floatformat:2 }}</td>
+                <td>₦{{ drug.total|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align:center;">No drugs dispensed</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="total text-right"><strong>GRAND TOTAL:</strong></td>
+                <td class="total">₦{{ receipt.total_amount|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <p style="text-align: center; margin-top: 40px; font-size: 10px; color: #777;">
+        Thank you. Get well soon!
+    </p>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{% extends 'hospital/admin_base.html' %}
+{% block content %}
+<h2>Delete Dispensed Drug</h2>
+<p>Are you sure you want to remove <strong>{{ drug.drug_name }}</strong> (qty: {{ drug.quantity }}) from records?</p>
+{% if receipts %}
+  <p>This drug is present on the following receipts:</p>
+  <ul>
+    {% for r in receipts %}
+      <li>Receipt #{{ r.pk }} (Patient: {{ r.patient.get_name }})</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <button class="btn btn-danger" type="submit">Yes, delete</button>
+  <a class="btn btn-secondary" href="{% url 'pharmacy-history' %}">Cancel</a>
+</form>
+{% endblock %}

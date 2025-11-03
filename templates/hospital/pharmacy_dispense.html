@@ -1,0 +1,139 @@
+{% extends 'hospital/pharmacy_base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-prescription me-2"></i>
+                Dispense: {{ emr.patient.get_name }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>Prescription:</strong><br>
+                <pre class="mb-0">{{ emr.prescription }}</pre>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {{ formset.management_form }}
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Drug Name</th>
+                                <th>Quantity</th>
+                                <th>Price/Unit</th>
+                                <th>Total</th>
+                                <th>Remove</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in formset %}
+                            <tr>
+                                <td>{{ form.drug_name|add_class:"form-control"|attr:"required:" }}</td>
+                                <td>{{ form.quantity|add_class:"form-control qty-input"|attr:"min:1" }}</td>
+                                <td>{{ form.price_per_unit|add_class:"form-control price-input"|attr:"step:0.01" }}</td>
+                                <td class="text-end fw-bold total-price text-success">₦0.00</td>
+                                <td class="text-center">
+                                    {% if form.instance.pk %}
+                                        {{ form.DELETE|add_class:"form-check-input" }}
+                                    {% else %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                                {{ form.id }}
+                            </tr>
+                            {% endfor %}
+                            <!-- Add Row Button -->
+                            <tr>
+                                <td colspan="5">
+                                    <button type="button" id="add-row" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-plus"></i> Add Drug
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <h5>Total Amount: <span id="grand-total" class="text-success fw-bold">₦0.00</span></h5>
+                    <div>
+                        <a href="{% url 'pharmacy-dashboard' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-file-invoice"></i> Save & Generate Receipt
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript: Add Row + Calculate Totals -->
+<script>
+const formsetPrefix = "{{ formset.prefix }}";
+let totalForms = parseInt(document.getElementById('id_' + formsetPrefix + '-TOTAL_FORMS').value);
+
+document.getElementById('add-row').addEventListener('click', function() {
+    const table = document.querySelector('tbody');
+    const newRow = table.insertRow(table.rows.length - 1); // Before "Add" button
+
+    newRow.innerHTML = `
+        <td><input type="text" name="${formsetPrefix}-${totalForms}-drug_name" class="form-control" placeholder="e.g., Amoxicillin 500mg" required></td>
+        <td><input type="number" name="${formsetPrefix}-${totalForms}-quantity" class="form-control qty-input" min="1" value="1"></td>
+        <td><input type="number" name="${formsetPrefix}-${totalForms}-price_per_unit" class="form-control price-input" step="0.01" value="0.00"></td>
+        <td class="text-end fw-bold total-price text-success">₦0.00</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+                <i class="fas fa-trash"></i>
+            </button>
+            <input type="hidden" name="${formsetPrefix}-${totalForms}-id">
+            <input type="hidden" name="${formsetPrefix}-${totalForms}-emr" value="{{ emr.id }}">
+        </td>
+    `;
+
+    totalForms++;
+    document.getElementById('id_' + formsetPrefix + '-TOTAL_FORMS').value = totalForms;
+    attachInputListeners(newRow);
+    updateGrandTotal();
+});
+
+function attachInputListeners(row) {
+    row.querySelectorAll('.qty-input, .price-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            const total = qty * price;
+            row.querySelector('.total-price').textContent = '₦' + total.toFixed(2);
+            updateGrandTotal();
+        });
+    });
+
+    row.querySelector('.remove-row')?.addEventListener('click', function() {
+        row.remove();
+        updateGrandTotal();
+    });
+}
+
+function updateGrandTotal() {
+    let grand = 0;
+    document.querySelectorAll('.total-price').forEach(el => {
+        grand += parseFloat(el.textContent.replace('₦', '')) || 0;
+    });
+    document.getElementById('grand-total').textContent = '₦' + grand.toFixed(2);
+}
+
+// Initialize
+document.querySelectorAll('tbody tr').forEach(row => {
+    if (!row.querySelector('#add-row')) attachInputListeners(row);
+});
+updateGrandTotal();
+</script>
+{% endblock %}

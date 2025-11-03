@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+{% load static %}
+{% load widget_tweaks %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nurse Login</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+    {% include "hospital/navbar.html" %}
+    <div class="container">
+        <div class="card" style="margin-top: 50px;">
+            <div class="card-body">
+                <h3 class="card-title text-center">Nurse Login</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Username</label>
+                        {% render_field form.username class="form-control" placeholder="Username" %}
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        {% render_field form.password class="form-control" placeholder="Password" %}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                </form>
+                <br>
+                <p class="text-center">Don't have an account? <a href="{% url 'nurse-signup' %}">Create one here</a></p>
+            </div>
+        </div>
+    </div>
+    {% include "hospital/footer.html" %}
+</body>
+</html>

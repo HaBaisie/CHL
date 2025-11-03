@@ -1,0 +1,116 @@
+{% extends 'hospital/admin_base.html' %}
+{% load static %}
+
+{% block content %}
+
+{% include 'hospital/admin_dashboard_cards.html' %}
+
+<br><br>
+
+<div class="container">
+
+    <!-- OPTIONAL QUICK-ACCESS CARD (you can delete) -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Pharmacy</h5>
+                    <a href="{% url 'pharmacy-dashboard' %}" class="btn btn-light">Open Pharmacy Panel</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Laboratory</h5>
+                    <a href="{% url 'lab-dashboard' %}" class="btn btn-light">Open Lab Panel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END OPTIONAL CARD -->
+
+    <div class="row">
+        <!-- ==== DOCTORS TABLE ==== -->
+        <div class="col-md-5" style="margin-left:2%;">
+            <div class="card">
+                <div class="card-header text-center bg-primary text-white">
+                    <h6>Recent Doctors</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Contact</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in doctors %}
+                            <tr>
+                                <td>{{ d.get_name }}</td>
+                                <td>{{ d.department }}</td>
+                                <td>{{ d.mobile }}</td>
+                                <td>
+                                    {% if d.status %}
+                                        <span class="badge badge-primary">Permanent</span>
+                                    {% else %}
+                                        <span class="badge badge-success">On Hold</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center">No doctors yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==== PATIENTS TABLE ==== -->
+        <div class="col-md-5" style="margin-left:5%;">
+            <div class="card">
+                <div class="card-header text-center bg-primary text-white">
+                    <h6>Recent Patients</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Name</th>
+                                <th>Symptoms</th>
+                                <th>Contact</th>
+                                <th>Address</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in patients %}
+                            <tr>
+                                <td>{{ p.get_name }}</td>
+                                <td>{{ p.symptoms }}</td>
+                                <td>{{ p.mobile }}</td>
+                                <td>{{ p.address }}</td>
+                                <td>
+                                    {% if p.status %}
+                                        <span class="badge badge-primary">Admitted</span>
+                                    {% else %}
+                                        <span class="badge badge-success">On Hold</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center">No patients yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

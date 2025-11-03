@@ -1,0 +1,33 @@
+{% extends 'hospital/homebase.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<br><br><br>
+<div class="container">
+  <div class="row">
+    <div class="col-md-6 offset-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="text-center">Account Department Login</h3>
+          <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" name="username" class="form-control" placeholder="Enter Username">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" name="password" class="form-control" placeholder="Enter Password">
+            </div>
+            <div class="form-group text-center">
+              <button type="submit" class="btn btn-success">Login</button>
+            </div>
+          </form>
+          <div class="text-center">
+            New to Account Department? <a href="{% url 'account-signup' %}">Sign up here</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

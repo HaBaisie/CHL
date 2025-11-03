@@ -1,0 +1,56 @@
+{% extends 'hospital/homebase.html' %}
+{% load widget_tweaks %}
+{% block content %}
+<br><br><br>
+<div class="container">
+  <div class="row">
+    <div class="col-md-6 offset-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="text-center">Account Department Sign Up</h3>
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+              <label>First Name</label>
+              {% render_field userForm.first_name class="form-control" placeholder="First Name" %}
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              {% render_field userForm.last_name class="form-control" placeholder="Last Name" %}
+            </div>
+            <div class="form-group">
+              <label>Username</label>
+              {% render_field userForm.username class="form-control" placeholder="Username" %}
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              {% render_field userForm.password class="form-control" placeholder="Password" %}
+            </div>
+
+            <div class="form-group">
+              <label>Mobile</label>
+              {% render_field accountForm.mobile class="form-control" placeholder="Mobile Number" %}
+            </div>
+            <div class="form-group">
+              <label>Address</label>
+              {% render_field accountForm.address class="form-control" placeholder="Address" %}
+            </div>
+            <div class="form-group">
+              <label>Profile Picture</label>
+              {% render_field accountForm.profile_pic class="form-control-file" %}
+            </div>
+
+            <div class="form-group text-center">
+              <button type="submit" class="btn btn-success">Sign Up</button>
+            </div>
+          </form>
+          <div class="text-center">
+            Already have an account? <a href="{% url 'account-login' %}">Login here</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

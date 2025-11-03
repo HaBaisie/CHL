@@ -1,0 +1,24 @@
+{% extends 'hospital/admin_base.html' %}
+{% block content %}
+<h2>Edit Receipt #{{ receipt.pk }}</h2>
+<p>Patient: {{ receipt.patient.get_name }}</p>
+<form method="post">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  <table class="table">
+    <thead><tr><th>Drug name</th><th>Qty</th><th>Unit price</th><th>DELETE</th></tr></thead>
+    <tbody>
+      {% for form in formset.forms %}
+        <tr>
+          <td>{{ form.drug_name }}</td>
+          <td>{{ form.quantity }}</td>
+          <td>{{ form.price_per_unit }}</td>
+          <td>{{ form.DELETE }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button class="btn btn-primary" type="submit">Save changes</button>
+  <a class="btn btn-secondary" href="{% url 'pharmacy-receipt-detail' receipt.pk %}">Cancel</a>
+</form>
+{% endblock %}

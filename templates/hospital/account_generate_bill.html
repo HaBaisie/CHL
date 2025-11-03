@@ -1,0 +1,213 @@
+{% extends 'hospital/admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Generate Bill</h3>
+        <div>
+            <span class="text-muted">{{ accountant.get_name }}</span>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Patient Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ patient.get_name }}</p>
+                    <p><strong>Mobile:</strong> {{ patient.mobile }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Admit Date:</strong> {{ patient.admitDate|date:"d/m/Y" }}</p>
+                    <p><strong>Address:</strong> {{ patient.address }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Bill Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Payment Method</label>
+                        {{ form.payment_method }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Status</label>
+                        {{ form.status }}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label>Insurance Details (if applicable)</label>
+                    {{ form.insurance_details }}
+                </div>
+
+                <!-- Pharmacy Charges -->
+                {% if pharmacy_receipts %}
+                <div class="mb-4">
+                    <h6>Pending Pharmacy Charges</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Receipt #</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Add to Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for receipt in pharmacy_receipts %}
+                            <tr>
+                                <td>{{ receipt.id }}</td>
+                                <td>{{ receipt.issued_at|date:"d/m/Y" }}</td>
+                                <td>₦{{ receipt.total_amount|floatformat:2 }}</td>
+                                <td>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input pharmacy-charge" 
+                                               data-id="{{ receipt.id }}"
+                                               data-amount="{{ receipt.total_amount }}">
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Lab Results -->
+                {% if lab_results %}
+                <div class="mb-4">
+                    <h6>Pending Lab Charges</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Test</th>
+                                <th>Date</th>
+                                <th>Add to Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in lab_results %}
+                            <tr>
+                                <td>{{ result.test_name }}</td>
+                                <td>{{ result.performed_at|date:"d/m/Y" }}</td>
+                                <td>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input lab-charge" 
+                                               data-id="{{ result.id }}"
+                                               data-test="{{ result.test_name }}">
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <h6>Bill Items</h6>
+                {{ formset.management_form }}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price (₦)</th>
+                            <th>Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bill-items">
+                        {% for form in formset %}
+                            <tr>
+                                <td>{{ form.item_type }}</td>
+                                <td>{{ form.description }}</td>
+                                <td>{{ form.quantity }}</td>
+                                <td>{{ form.unit_price }}</td>
+                                <td>
+                                    {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Remarks</label>
+                        {{ form.remarks }}
+                    </div>
+                    <div class="col-md-6">
+                        <label>Discount</label>
+                        {{ form.discount }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'account-patient-list' %}" class="btn btn-secondary">Back</a>
+            <button type="submit" class="btn btn-primary">Generate Bill</button>
+        </div>
+    </form>
+</div>
+
+{% block extrajs %}
+<script>
+// Handle pharmacy charges
+document.querySelectorAll('.pharmacy-charge').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            addBillItem('drug', 
+                       `Pharmacy Receipt #${this.dataset.id}`,
+                       1,
+                       this.dataset.amount);
+        }
+    });
+});
+
+// Handle lab charges
+document.querySelectorAll('.lab-charge').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            addBillItem('lab',
+                       `Lab Test: ${this.dataset.test}`,
+                       1,
+                       500); // Default price, adjust as needed
+        }
+    });
+});
+
+function addBillItem(type, description, qty, price) {
+    // Find the last form in the formset
+    const forms = document.querySelectorAll('#bill-items tr');
+    const lastForm = forms[forms.length - 1];
+    
+    // Clone it
+    const newForm = lastForm.cloneNode(true);
+    
+    // Update form elements
+    newForm.querySelector('[name$="-item_type"]').value = type;
+    newForm.querySelector('[name$="-description"]').value = description;
+    newForm.querySelector('[name$="-quantity"]').value = qty;
+    newForm.querySelector('[name$="-unit_price"]').value = price;
+    
+    // Add to table
+    document.getElementById('bill-items').appendChild(newForm);
+    
+    // Update form count
+    const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+    totalForms.value = parseInt(totalForms.value) + 1;
+}
+</script>
+{% endblock %}
+{% endblock %}

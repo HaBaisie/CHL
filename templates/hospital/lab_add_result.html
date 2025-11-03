@@ -1,0 +1,56 @@
+{% extends 'hospital/lab_base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Add Lab Result{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-gradient-primary text-white py-3">
+        <h4 class="mb-0">
+          <i class="fas fa-vial me-2"></i>
+          Add Lab Result – {{ patient.get_name }}
+        </h4>
+      </div>
+      <div class="card-body p-4">
+        <div class="alert alert-info small">
+          <strong>Patient:</strong> {{ patient.get_name }} | 
+          <strong>Mobile:</strong> {{ patient.mobile }}
+          {% if patient.symptoms %} | <strong>Symptoms:</strong> {{ patient.symptoms|truncatewords:6 }}{% endif %}
+        </div>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Test Name</label>
+            {{ form.test_name|add_class:"form-control"|attr:"required" }}
+            <small class="text-muted">e.g., Malaria Parasite, HbA1c, Liver Function Test</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Result Value</label>
+            {{ form.result_value|add_class:"form-control"|attr:"required" }}
+            <small class="text-muted">e.g., Positive, 12.5 g/dL, 5.7%</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Remarks (Optional)</label>
+            {{ form.remarks|add_class:"form-control" }}
+          </div>
+
+          <div class="d-flex justify-content-between mt-4">
+            <a href="{% url 'lab-dashboard' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button type="submit" class="btn btn-success px-4">
+              <i class="fas fa-file-pdf"></i> Save & Generate Report
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
