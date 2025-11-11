@@ -2,8 +2,14 @@ from django import forms
 from django.contrib.auth.models import User
 from django.forms import inlineformset_factory  # ← ADD THIS LINE
 from . import models
-from .models import DispensedDrug, LabResult, Drug, LabTest
-from .models import DispensedDrug, LabResult, Drug, LabTest, PatientEMR
+
+# Import models individually to avoid circular import issues
+DispensedDrug = models.DispensedDrug
+LabResult = models.LabResult
+Drug = models.Drug
+LabTest = models.LabTest
+PatientEMR = models.PatientEMR
+LabRequest = models.LabRequest  # ← NOW SAFE
 #for admin signup
 class AdminSigupForm(forms.ModelForm):
     class Meta:
@@ -118,26 +124,6 @@ DispenseDrugFormSet = inlineformset_factory(
 # -------------------------------------------------
 # Lab forms
 # -------------------------------------------------
-class LabResultForm(forms.ModelForm):
-    class Meta:
-        model = LabResult
-        fields = ['test_name', 'result_value', 'remarks']
-        widgets = {
-            'test_name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., Full Blood Count (FBC)'
-            }),
-            'result_value': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., 12.5 g/dL'
-            }),
-            'remarks': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                '`placeholder': 'Optional notes'
-            }),
-        }
-
 class PharmacyUserForm(forms.ModelForm):
     class Meta:
         model = User
@@ -255,3 +241,81 @@ class DischargeForm(forms.Form):
         required=False,
         initial=0
     )
+
+# ──────────────────────────────────────────────────────────────
+#  Doctor: Add lab request inside EMR
+# ──────────────────────────────────────────────────────────────
+class LabRequestForm(forms.ModelForm):
+    class Meta:
+        model = LabRequest
+        fields = ['test_name']
+        widgets = {
+            'test_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. CBC, LFT, Urine R/E'
+            })
+        }
+
+# Inline formset so doctor can add many tests at once
+LabRequestFormSet = inlineformset_factory(
+    PatientEMR, LabRequest,
+    form=LabRequestForm,
+    extra=2,
+    can_delete=True
+)
+
+# ──────────────────────────────────────────────────────────────
+#  Lab Tech: Fill result for a request
+# ──────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  Lab Tech: Fill result – can see ordered test + edit if needed
+# ──────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  Lab Tech: Fill result – can see ordered test + edit if needed
+# ──────────────────────────────────────────────────────────────
+class LabResultForm(forms.ModelForm):
+    class Meta:
+        model = LabResult
+        fields = ['test_name', 'result_value', 'remarks']
+        widgets = {
+            'test_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. Full Blood Count (FBC)'
+            }),
+            'result_value': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. 12.5 g/dL, Positive, Normal'
+            }),
+            'remarks': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Any observations or flags'
+            }),
+        }
+
+    def __init__(self, *args, lab_request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if lab_request:
+            self.fields['test_name'].initial = lab_request.test_name
+            self.fields['test_name'].widget.attrs['readonly'] = False
+            self.fields['test_name'].help_text = (
+                f"<small class='text-muted'>"
+                f"Ordered: <strong>{lab_request.test_name}</strong> "
+                f"by Dr. {lab_request.ordered_by.get_full_name() if lab_request.ordered_by else 'Unknown'} "
+                f"on {lab_request.ordered_at.strftime('%d %b %Y, %I:%M %p')}"
+                f"</small>"
+            )
+        else:
+            self.fields['test_name'].help_text = ""
+# --- EMR Form (for doctor) ---
+class PatientEMRForm(forms.ModelForm):
+    class Meta:
+        model = PatientEMR
+        fields = ['diagnosis', 'symptoms', 'treatment', 'prescription', 'notes']
+        widgets = {
+            'diagnosis': forms.TextInput(attrs={'class': 'form-control'}),
+            'symptoms': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'treatment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'prescription': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }

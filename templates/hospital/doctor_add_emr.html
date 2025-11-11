@@ -1,30 +1,157 @@
 {% extends 'hospital/doctor_base.html' %}
+{% load widget_tweaks %}
+
 {% block content %}
-<div class="container">
-    <h2>Add Medical Record for {{ patient.get_name }}</h2>
-    <form method="POST">
+<div class="container mt-4">
+    <h2 class="mb-4">
+        Add Medical Record for <strong>{{ patient.get_name }}</strong>
+    </h2>
+
+    <form method="post" novalidate>
         {% csrf_token %}
-        <div class="form-group">
-            <label>Diagnosis</label>
-            <input type="text" class="form-control" name="diagnosis" required>
+
+        <!-- ==================== EMR FIELDS ==================== -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Clinical Notes</h5>
+            </div>
+            <div class="card-body">
+
+                <div class="form-group mb-3">
+                    <label for="{{ emr_form.diagnosis.id_for_label }}">Diagnosis <span class="text-danger">*</span></label>
+                    {{ emr_form.diagnosis|add_class:"form-control" }}
+                    {% if emr_form.diagnosis.errors %}
+                        <small class="text-danger">{{ emr_form.diagnosis.errors|join:", " }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="{{ emr_form.symptoms.id_for_label }}">Symptoms</label>
+                    {{ emr_form.symptoms|add_class:"form-control" }}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="{{ emr_form.treatment.id_for_label }}">Treatment</label>
+                    {{ emr_form.treatment|add_class:"form-control" }}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="{{ emr_form.prescription.id_for_label }}">Prescription</label>
+                    {{ emr_form.prescription|add_class:"form-control" }}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="{{ emr_form.notes.id_for_label }}">Notes</label>
+                    {{ emr_form.notes|add_class:"form-control" }}
+                </div>
+
+            </div>
         </div>
-        <div class="form-group">
-            <label>Symptoms</label>
-            <textarea class="form-control" name="symptoms" rows="2"></textarea>
+
+        <!-- ==================== LAB REQUESTS ==================== -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    Lab Tests to Order
+                    <small class="float-right">Add up to {{ lab_formset.total_form_count }} tests</small>
+                </h5>
+            </div>
+            <div class="card-body">
+
+                {{ lab_formset.management_form }}
+
+                {% for form in lab_formset %}
+                    <div class="border rounded p-3 mb-3 lab-request-row" style="background:#f8f9fa;">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                {{ form.test_name|add_class:"form-control"|attr:"placeholder:Enter test name (e.g. CBC, LFT)" }}
+                                {% if form.test_name.errors %}
+                                    <small class="text-danger">{{ form.test_name.errors|join:", " }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                {% if form.instance.pk %}
+                                    {{ form.id }}
+                                    <div class="form-check">
+                                        {{ form.DELETE|add_class:"form-check-input" }}
+                                        <label class="form-check-label text-danger">Remove</label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-1 text-right">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-form" {% if not form.instance.pk %}style="display:none;"{% endif %}>
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <button type="button" id="add-lab-test" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> Add Another Test
+                </button>
+
+            </div>
         </div>
-        <div class="form-group">
-            <label>Treatment</label>
-            <textarea class="form-control" name="treatment" rows="3"></textarea>
+
+        <!-- ==================== SUBMIT ==================== -->
+        <div class="mt-4 text-center">
+            <button type="submit" class="btn btn-success btn-lg px-5">
+                <i class="fas fa-save"></i> Save EMR & Lab Requests
+            </button>
+            <a href="{% url 'doctor-view-patient-emr' patient.id %}" class="btn btn-secondary btn-lg px-5">
+                Cancel
+            </a>
         </div>
-        <div class="form-group">
-            <label>Prescription</label>
-            <textarea class="form-control" name="prescription" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-            <label>Notes</label>
-            <textarea class="form-control" name="notes" rows="3"></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary">Save Record</button>
     </form>
 </div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+    // Dynamically add new empty lab request forms
+    document.getElementById('add-lab-test').addEventListener('click', function () {
+        const formset = document.querySelectorAll('.lab-request-row');
+        const totalForms = document.querySelector('#id_lab_requests-TOTAL_FORMS');
+        const formIdx = parseInt(totalForms.value);
+
+        // Clone the last form
+        const lastForm = formset[formset.length - 1].cloneNode(true);
+        const newForm = lastForm;
+
+        // Update name/id attributes
+        newForm.innerHTML = newForm.innerHTML
+            .replace(/lab_requests-\d+/g, `lab_requests-${formIdx}`)
+            .replace(/id_lab_requests-\d+-/g, `id_lab_requests-${formIdx}-`);
+
+        // Clear values
+        newForm.querySelectorAll('input, textarea').forEach(el => el.value = '');
+        newForm.querySelector('.remove-form').style.display = 'inline-block';
+
+        // Insert before the "Add" button
+        document.querySelector('.card-body').insertBefore(newForm, this);
+
+        // Increment total
+        totalForms.value = formIdx + 1;
+    });
+
+    // Remove form (only extra ones)
+    document.querySelectorAll('.remove-form').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const row = this.closest('.lab-request-row');
+            const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+            if (deleteCheckbox) {
+                deleteCheckbox.checked = true;
+                row.style.display = 'none';
+            } else {
+                row.remove();
+                // Update total forms count
+                const totalForms = document.querySelector('#id_lab_requests-TOTAL_FORMS');
+                totalForms.value = parseInt(totalForms.value) - 1;
+            }
+        });
+    });
+</script>
 {% endblock %}

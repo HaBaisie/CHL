@@ -7,12 +7,12 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Sum
 from datetime import datetime, timedelta, date
-from .forms import LabResultForm
 # App imports
-from . import forms, models
+from . import models
+from . import forms
 from .models import (
     PatientEMR, DispensedDrug, Drug, 
-    PharmacyReceipt, LabResult, Patient
+    PharmacyReceipt, LabResult, Patient,LabRequest
 )
  
 
@@ -30,6 +30,10 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from .models import PatientEMR, DispensedDrug, PharmacyReceipt
 from .forms import DispenseDrugFormSet
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.utils import timezone
 
 # Create your views here.
 def home_view(request):
@@ -739,35 +743,6 @@ def doctor_view_patient_emr(request, patient_id):
     return render(request, 'hospital/doctor_view_patient_emr.html', context)
 
 
-@login_required(login_url='doctorlogin')
-@user_passes_test(is_doctor)
-def doctor_add_emr(request, patient_id):
-    patient = models.Patient.objects.get(id=patient_id)
-    doctor = models.Doctor.objects.get(user_id=request.user.id)
-
-    if request.method == 'POST':
-        diagnosis = request.POST.get('diagnosis')
-        symptoms = request.POST.get('symptoms')
-        treatment = request.POST.get('treatment')
-        prescription = request.POST.get('prescription')
-        notes = request.POST.get('notes')
-
-        models.PatientEMR.objects.create(
-            patient=patient,
-            doctor=doctor,
-            diagnosis=diagnosis,
-            symptoms=symptoms,
-            treatment=treatment,
-            prescription=prescription,
-            notes=notes,
-        )
-        return redirect('doctor-view-patient-emr', patient_id=patient.id)
-
-    context = {
-        'patient': patient,
-        'doctor': doctor,  # for profile picture in sidebar
-    }
-    return render(request, 'hospital/doctor_add_emr.html', context)
 
 
 #---------------------------------------------------------------------------------
@@ -1274,24 +1249,32 @@ def lab_dashboard(request):
 
 @login_required(login_url='lab-login')
 @user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
-def lab_add_result(request, patient_id):
-    patient = get_object_or_404(Patient, pk=patient_id)
+def lab_add_result(request, request_id):
+    from .forms import LabResultForm
+    lab_request = get_object_or_404(LabRequest, pk=request_id, is_completed=False)
+    emr = lab_request.emr
 
     if request.method == 'POST':
-        form = LabResultForm(request.POST)
+        form = LabResultForm(request.POST, lab_request=lab_request)
         if form.is_valid():
             result = form.save(commit=False)
-            result.patient = patient
+            result.patient = emr.patient
             result.performed_by = request.user
             result.save()
-            messages.success(request, f"Lab result saved for {patient.get_name}")
-            return redirect('lab-report-pdf', result.id)
+
+            # Mark request as completed
+            lab_request.is_completed = True
+            lab_request.save()
+
+            messages.success(request, f"Result saved for {result.test_name}")
+            return redirect('lab-pending-requests')
     else:
-        form = LabResultForm()
+        form = LabResultForm(lab_request=lab_request)
 
     return render(request, 'hospital/lab_add_result.html', {
         'form': form,
-        'patient': patient,
+        'lab_request': lab_request,
+        'patient': emr.patient,
     })
 
 @login_required(login_url='doctor-login')
@@ -1305,6 +1288,10 @@ def doctor_view_lab_results(request, patient_id):
         'lab_results': lab_results,
     }
     return render(request, 'hospital/doctor_lab_results.html', context)
+def lab_report_pdf(request, result_id):
+    result = get_object_or_404(LabResult, pk=result_id)
+    return render_to_pdf('hospital/lab_report_pdf.html', {'result': result})
+# In views.py
 def lab_report_pdf(request, result_id):
     result = get_object_or_404(LabResult, pk=result_id)
     return render_to_pdf('hospital/lab_report_pdf.html', {'result': result})
@@ -1702,3 +1689,58 @@ def account_discharge_patient(request, patient_id):
         'accountant': accountant,
         'days_spent': days
     })
+@login_required(login_url='doctorlogin')
+@user_passes_test(is_doctor)
+def doctor_add_emr(request, patient_id):
+    patient = get_object_or_404(models.Patient, pk=patient_id)
+    doctor = models.Doctor.objects.get(user_id=request.user.id)
+
+    # Get or create EMR
+    emr, created = models.PatientEMR.objects.get_or_create(
+        patient=patient,
+        doctor=doctor,
+        defaults={'date': timezone.now()}
+    )
+
+    if request.method == 'POST':
+        emr_form = forms.PatientEMRForm(request.POST, instance=emr)
+        lab_formset = forms.LabRequestFormSet(request.POST, instance=emr)
+
+        if emr_form.is_valid() and lab_formset.is_valid():
+            emr_form.save()
+            lab_formset.save()
+            messages.success(request, "EMR and lab requests saved!")
+            return redirect('doctor-view-patient-emr', patient_id=patient.id)
+    else:
+        emr_form = forms.PatientEMRForm(instance=emr)
+        lab_formset = forms.LabRequestFormSet(instance=emr)
+
+    context = {
+        'patient': patient,
+        'doctor': doctor,
+        'emr_form': emr_form,
+        'lab_formset': lab_formset,
+        'emr': emr,
+    }
+    return render(request, 'hospital/doctor_add_emr.html', context)
+
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
+def lab_pending_requests(request):
+    requests = LabRequest.objects.filter(is_completed=False).select_related('emr__patient')
+    return render(request, 'hospital/lab_pending_requests.html', {'requests': requests})
+
+
+@login_required(login_url='doctorlogin')
+@user_passes_test(is_doctor)
+def doctor_view_patient_emr(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    emr_records = PatientEMR.objects.filter(patient=patient).order_by('-date')
+    doctor = models.Doctor.objects.get(user_id=request.user.id)
+
+    context = {
+        'patient': patient,
+        'emr_records': emr_records,
+        'doctor': doctor,
+    }
+    return render(request, 'hospital/doctor_view_patient_emr.html', context)

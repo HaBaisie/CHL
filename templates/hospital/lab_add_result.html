@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-7">
+  <div class="col-lg-8">
     <div class="card shadow-sm border-0">
       <div class="card-header bg-gradient-primary text-white py-3">
         <h4 class="mb-0">
@@ -14,25 +14,47 @@
         </h4>
       </div>
       <div class="card-body p-4">
-        <div class="alert alert-info small">
+
+        <!-- Patient Info -->
+        <div class="alert alert-info small mb-4">
           <strong>Patient:</strong> {{ patient.get_name }} | 
           <strong>Mobile:</strong> {{ patient.mobile }}
-          {% if patient.symptoms %} | <strong>Symptoms:</strong> {{ patient.symptoms|truncatewords:6 }}{% endif %}
         </div>
 
+        <!-- Ordered Test (Visual) -->
+        <div class="mb-4 p-3 bg-light border rounded">
+          <p class="mb-1"><strong>Ordered Test:</strong></p>
+          <h5 class="text-primary mb-1">
+            <i class="fas fa-clipboard-list me-2"></i>
+            {{ lab_request.test_name }}
+          </h5>
+          <small class="text-muted">
+            By Dr. {{ lab_request.ordered_by.get_full_name|default:"Unknown" }}
+            on {{ lab_request.ordered_at|date:"d M Y, h:i A" }}
+          </small>
+        </div>
+
+        <!-- Form -->
         <form method="post" novalidate>
           {% csrf_token %}
 
           <div class="mb-3">
-            <label class="form-label fw-bold">Test Name</label>
+            <label class="form-label fw-bold">Test Name <span class="text-danger">*</span></label>
             {{ form.test_name|add_class:"form-control"|attr:"required" }}
-            <small class="text-muted">e.g., Malaria Parasite, HbA1c, Liver Function Test</small>
+            {% if form.test_name.help_text %}
+              <small class="form-text text-muted">{#{ form.test_name.help_text|safe }#}</small>
+            {% endif %}
+            {% if form.test_name.errors %}
+              <small class="text-danger">{{ form.test_name.errors|join:", " }}</small>
+            {% endif %}
           </div>
 
           <div class="mb-3">
-            <label class="form-label fw-bold">Result Value</label>
+            <label class="form-label fw-bold">Result Value <span class="text-danger">*</span></label>
             {{ form.result_value|add_class:"form-control"|attr:"required" }}
-            <small class="text-muted">e.g., Positive, 12.5 g/dL, 5.7%</small>
+            {% if form.result_value.errors %}
+              <small class="text-danger">{{ form.result_value.errors|join:", " }}</small>
+            {% endif %}
           </div>
 
           <div class="mb-3">
@@ -41,11 +63,11 @@
           </div>
 
           <div class="d-flex justify-content-between mt-4">
-            <a href="{% url 'lab-dashboard' %}" class="btn btn-outline-secondary">
-              <i class="fas fa-arrow-left"></i> Back to Dashboard
+            <a href="{% url 'lab-pending-requests' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left"></i> Back
             </a>
             <button type="submit" class="btn btn-success px-4">
-              <i class="fas fa-file-pdf"></i> Save & Generate Report
+              <i class="fas fa-save"></i> Save Result
             </button>
           </div>
         </form>

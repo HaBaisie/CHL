@@ -322,3 +322,16 @@ class BillItem(models.Model):
 
     def __str__(self):
         return f"{self.item_type}: {self.description}"
+    
+# ──────────────────────────────────────────────────────────────
+#  LAB REQUEST (Doctor orders a test)
+# ──────────────────────────────────────────────────────────────
+class LabRequest(models.Model):
+    emr = models.ForeignKey(PatientEMR, on_delete=models.CASCADE, related_name='lab_requests')
+    test_name = models.CharField(max_length=200)      # e.g. "Full Blood Count"
+    ordered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='ordered_tests')
+    ordered_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.test_name} for {self.emr.patient.get_name}"

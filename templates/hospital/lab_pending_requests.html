@@ -1,0 +1,11 @@
+<table class="table">
+  <tr><th>Patient</th><th>Test</th><th>Ordered By</th><th>Action</th></tr>
+  {% for r in requests %}
+  <tr>
+    <td>{{ r.emr.patient.get_name }}</td>
+    <td>{{ r.test_name }}</td>
+    <td>{{ r.ordered_by.get_full_name }}</td>
+    <td><a href="{% url 'lab-add-result' r.id %}" class="btn btn-sm btn-primary">Add Result</a></td>
+  </tr>
+  {% endfor %}
+</table>

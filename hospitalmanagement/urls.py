@@ -127,4 +127,9 @@ urlpatterns = [
     path('account-bill-detail/<int:bill_id>/', views.account_bill_detail, name='account-bill-detail'),
     path('account-discharge-patient/<int:patient_id>/', views.account_discharge_patient, name='account-discharge-patient'),
     path('account-mark-bill-paid/<int:bill_id>/', views.mark_bill_as_paid, name='account-mark-bill-paid'),
+
+    path('doctor/add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
+    path('lab/pending/', views.lab_pending_requests, name='lab-pending-requests'),
+    path('lab/add-result/<int:request_id>/', views.lab_add_result, name='lab-add-result'),
+    
 ]
