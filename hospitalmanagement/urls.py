@@ -130,6 +130,5 @@ urlpatterns = [
 
     path('doctor/add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
     path('lab/pending/', views.lab_pending_requests, name='lab-pending-requests'),
-    path('lab/add-result/<int:request_id>/', views.lab_add_result, name='lab-add-result'),
     
 ]
