@@ -78,7 +78,7 @@ urlpatterns = [
     path('doctor-delete-appointment', views.doctor_delete_appointment_view, name='doctor-delete-appointment'),
     path('delete-appointment/<int:pk>', views.delete_appointment_view, name='delete-appointment'),
     path('doctor-view-patient-emr/<int:patient_id>/', views.doctor_view_patient_emr, name='doctor-view-patient-emr'),
-    path('doctor-add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
+    # path('doctor-add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
     path('doctor-emr-view/<int:patient_id>/', views.doctor_emr_view, name='doctor-emr-view'),
     path('doctor-view-lab-results/<int:patient_id>/', views.doctor_view_lab_results, name='doctor-view-lab-results'),
 
@@ -128,7 +128,10 @@ urlpatterns = [
     path('account-discharge-patient/<int:patient_id>/', views.account_discharge_patient, name='account-discharge-patient'),
     path('account-mark-bill-paid/<int:bill_id>/', views.mark_bill_as_paid, name='account-mark-bill-paid'),
 
-    path('doctor/add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
+    # path('doctor/add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
     path('lab/pending/', views.lab_pending_requests, name='lab-pending-requests'),
+    # hospital/urls.py
+    path('doctor/emr/<int:patient_id>/', views.doctor_manage_emr, name='doctor-add-emr'),
+    path('doctor/emr/<int:patient_id>/<int:emr_id>/', views.doctor_manage_emr, name='doctor-edit-emr'),
     
 ]

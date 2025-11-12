@@ -1,0 +1,166 @@
+<!-- templates/hospital/doctor_manage_emr.html -->
+
+{% extends 'hospital/doctor_base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} EMR - {{ patient.get_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white rounded-top">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-notes-medical me-2"></i>
+                {{ action }} EMR – {{ patient.get_name }}
+            </h5>
+        </div>
+        <div class="card-body p-4">
+
+            <!-- Show Form Errors (if any) -->
+            {% if form.errors or lab_formset.errors %}
+            <div class="alert alert-danger">
+                <strong>Please fix the following errors:</strong>
+                <ul class="mb-0">
+                    {% for field, error in form.errors.items %}
+                        <li><strong>{{ field|capfirst }}:</strong> {{ error|striptags }}</li>
+                    {% endfor %}
+                    {% for error in lab_formset.non_form_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {{ lab_formset.management_form }}
+
+                <!-- EMR FIELDS -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Diagnosis <span class="text-danger">*</span></label>
+                        {{ form.diagnosis }}
+                        <div class="text-danger small">{{ form.diagnosis.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Symptoms</label>
+                        {{ form.symptoms }}
+                        <div class="text-danger small">{{ form.symptoms.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Treatment</label>
+                        {{ form.treatment }}
+                        <div class="text-danger small">{{ form.treatment.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Date</label>
+                        <div class="form-control bg-light text-muted" style="height: 38px; display: flex; align-items: center;">
+                            {% if emr.id %}
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                {{ emr.date|date:"d M Y, h:i A" }}
+                            {% else %}
+                                <em>Auto-generated on save</em>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Prescription</label>
+                        {{ form.prescription }}
+                        <div class="text-danger small">{{ form.prescription.errors }}</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Notes</label>
+                        {{ form.notes }}
+                        <div class="text-danger small">{{ form.notes.errors }}</div>
+                    </div>
+                </div>
+
+                <!-- LAB REQUESTS SECTION -->
+                <hr class="my-4 border-secondary">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-primary mb-0">
+                        <i class="fas fa-vial me-2"></i>Order Lab Tests
+                    </h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-lab">
+                        <i class="fas fa-plus"></i> Add Test
+                    </button>
+                </div>
+
+                <div id="lab-formset">
+                    {% for lab_form in lab_formset %}
+                    <div class="row g-3 mb-2 align-items-center lab-form border rounded p-3 bg-light">
+                        <div class="col-md-8">
+                            {{ lab_form.test_name }}
+                            <div class="text-danger small">{{ lab_form.test_name.errors }}</div>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            {% if lab_form.instance.pk %}
+                                <span class="badge bg-secondary">ID: {{ lab_form.instance.id }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-1 text-end">
+                            {% if lab_form.instance.pk %}
+                                <label class="form-check">
+                                    {{ lab_form.DELETE }}
+                                    <span class="form-check-label text-danger small">Delete</span>
+                                </label>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small">No lab tests added yet. Click "Add Test" to begin.</p>
+                    {% endfor %}
+                </div>
+
+                <!-- ACTION BUTTONS -->
+                <div class="mt-5 d-flex justify-content-end gap-2">
+                    <a href="{% url 'doctor-view-patient-emr' patient.id %}" 
+                       class="btn btn-outline-secondary px-4">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-success px-5">
+                        <i class="fas fa-save"></i> Save EMR & Order Tests
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Formset JS -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const formsetContainer = document.getElementById('lab-formset');
+    const addButton = document.getElementById('add-lab');
+    const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+
+    addButton.onclick = function () {
+        const formCount = parseInt(totalForms.value);
+        const emptyForm = formsetContainer.querySelector('.lab-form')?.outerHTML || 
+                         `<div class="row g-3 mb-2 align-items-center lab-form border rounded p-3 bg-light">
+                            <div class="col-md-8">
+                                <input type="text" name="form-${formCount}-test_name" 
+                                       class="form-control" placeholder="e.g. CBC, Blood Sugar" 
+                                       id="id_form-${formCount}-test_name">
+                            </div>
+                            <div class="col-md-4"></div>
+                          </div>`;
+
+        const newFormHtml = emptyForm
+            .replace(/form-\d+/g, `form-${formCount}`)
+            .replace(/__prefix__/g, formCount);
+
+        const div = document.createElement('div');
+        div.innerHTML = newFormHtml;
+        formsetContainer.appendChild(div.firstChild);
+
+        totalForms.value = formCount + 1;
+    };
+});
+</script>
+
+<style>
+.lab-form input { border-radius: 0.375rem; }
+.form-check { margin-top: 0.5rem; }
+</style>
+{% endblock %}

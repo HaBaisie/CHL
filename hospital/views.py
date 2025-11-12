@@ -1251,8 +1251,14 @@ def lab_dashboard(request):
 @user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
 def lab_add_result(request, request_id):
     from .forms import LabResultForm
-    lab_request = get_object_or_404(LabRequest, pk=request_id, is_completed=False)
+    # REMOVE is_completed=False → allow viewing even if already done
+    lab_request = get_object_or_404(LabRequest, pk=request_id)
     emr = lab_request.emr
+
+    # Optional: Prevent double-entry
+    if lab_request.is_completed:
+        messages.error(request, "This lab request has already been completed.")
+        return redirect('lab-pending-requests')
 
     if request.method == 'POST':
         form = LabResultForm(request.POST, lab_request=lab_request)
@@ -1261,11 +1267,8 @@ def lab_add_result(request, request_id):
             result.patient = emr.patient
             result.performed_by = request.user
             result.save()
-
-            # Mark request as completed
             lab_request.is_completed = True
             lab_request.save()
-
             messages.success(request, f"Result saved for {result.test_name}")
             return redirect('lab-pending-requests')
     else:
@@ -1689,40 +1692,67 @@ def account_discharge_patient(request, patient_id):
         'accountant': accountant,
         'days_spent': days
     })
+# hospital/views.py
+# hospital/views.py
+
+from .forms import PatientEMRForm, LabRequestFormSet  # ← ADD THIS
+
+# hospital/views.py
+
+# hospital/views.py
+
 @login_required(login_url='doctorlogin')
 @user_passes_test(is_doctor)
-def doctor_add_emr(request, patient_id):
+def doctor_manage_emr(request, patient_id, emr_id=None):
     patient = get_object_or_404(models.Patient, pk=patient_id)
     doctor = models.Doctor.objects.get(user_id=request.user.id)
 
-    # Get or create EMR
-    emr, created = models.PatientEMR.objects.get_or_create(
-        patient=patient,
-        doctor=doctor,
-        defaults={'date': timezone.now()}
-    )
+    if emr_id:
+        emr = get_object_or_404(models.PatientEMR, pk=emr_id, patient=patient)
+        action = "Edit"
+    else:
+        emr = models.PatientEMR(patient=patient, doctor=doctor)
+        action = "Add"
 
     if request.method == 'POST':
-        emr_form = forms.PatientEMRForm(request.POST, instance=emr)
+        form = forms.PatientEMRForm(request.POST, instance=emr)
         lab_formset = forms.LabRequestFormSet(request.POST, instance=emr)
 
-        if emr_form.is_valid() and lab_formset.is_valid():
-            emr_form.save()
-            lab_formset.save()
-            messages.success(request, "EMR and lab requests saved!")
+        if form.is_valid() and lab_formset.is_valid():
+            # SAVE EMR FIRST
+            emr_obj = form.save(commit=False)
+            if not emr_obj.id:  # New EMR
+                emr_obj.date = timezone.now()
+            emr_obj.save()  # CRITICAL: SAVE HERE
+
+            # SAVE LAB REQUESTS
+            lab_requests = lab_formset.save(commit=False)
+            for req in lab_requests:
+                req.emr = emr_obj
+                req.ordered_by = doctor.user
+                req.save()
+            for obj in lab_formset.deleted_objects:
+                obj.delete()
+
+            messages.success(request, f"EMR {action.lower()}ed successfully!")
             return redirect('doctor-view-patient-emr', patient_id=patient.id)
+        else:
+            # DEBUG: Show form errors
+            print("EMR Form Errors:", form.errors)
+            print("Lab Formset Errors:", lab_formset.errors)
     else:
-        emr_form = forms.PatientEMRForm(instance=emr)
+        form = forms.PatientEMRForm(instance=emr)
         lab_formset = forms.LabRequestFormSet(instance=emr)
 
     context = {
+        'form': form,
+        'lab_formset': lab_formset,
         'patient': patient,
         'doctor': doctor,
-        'emr_form': emr_form,
-        'lab_formset': lab_formset,
-        'emr': emr,
+        'action': action,
+        'emr': emr if emr_id else None,
     }
-    return render(request, 'hospital/doctor_add_emr.html', context)
+    return render(request, 'hospital/doctor_manage_emr.html', context)
 
 @login_required(login_url='lab-login')
 @user_passes_test(lambda u: u.groups.filter(name='LAB').exists())

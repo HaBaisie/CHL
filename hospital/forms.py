@@ -308,14 +308,16 @@ class LabResultForm(forms.ModelForm):
         else:
             self.fields['test_name'].help_text = ""
 # --- EMR Form (for doctor) ---
+# hospital/forms.py
+
 class PatientEMRForm(forms.ModelForm):
     class Meta:
-        model = PatientEMR
+        model = models.PatientEMR
         fields = ['diagnosis', 'symptoms', 'treatment', 'prescription', 'notes']
         widgets = {
             'diagnosis': forms.TextInput(attrs={'class': 'form-control'}),
-            'symptoms': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'treatment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'prescription': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'symptoms': forms.TextInput(attrs={'class': 'form-control'}),
+            'treatment': forms.TextInput(attrs={'class': 'form-control'}),
+            'prescription': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
