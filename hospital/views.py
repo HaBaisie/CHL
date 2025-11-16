@@ -102,29 +102,33 @@ def doctor_signup_view(request):
 
 
 def patient_signup_view(request):
-    userForm=forms.PatientUserForm()
-    patientForm=forms.PatientForm()
-    mydict={'userForm':userForm,'patientForm':patientForm}
-    if request.method=='POST':
-        userForm=forms.PatientUserForm(request.POST)
-        patientForm=forms.PatientForm(request.POST,request.FILES)
+    userForm = forms.PatientUserForm()
+    patientForm = forms.PatientForm()
+    mydict = {'userForm': userForm, 'patientForm': patientForm}
+    
+    if request.method == 'POST':
+        userForm = forms.PatientUserForm(request.POST)
+        patientForm = forms.PatientForm(request.POST, request.FILES)
+        
         if userForm.is_valid() and patientForm.is_valid():
-            user=userForm.save()
+            user = userForm.save()
             user.set_password(user.password)
             user.save()
-            patient=patientForm.save(commit=False)
-            patient.user=user
-            patient.assignedDoctorId=request.POST.get('assignedDoctorId')
-            patient=patient.save()
-            my_patient_group = Group.objects.get_or_create(name='PATIENT')
-            my_patient_group[0].user_set.add(user)
-        return HttpResponseRedirect('patientlogin')
-    return render(request,'hospital/patientsignup.html',context=mydict)
-
-
-
-
-
+            
+            patient = patientForm.save(commit=False)
+            patient.user =  user
+            patient.assignedDoctorId = request.POST.get('assignedDoctorId')
+            patient.status = True
+            patient.admitDate = date.today()
+            patient.save()
+            
+            my_patient_group, _ = Group.objects.get_or_create(name='PATIENT')
+            my_patient_group.user_set.add(user)
+            
+            messages.success(request, "Registration successful! You can now log in.")
+            return HttpResponseRedirect('patientlogin')
+    
+    return render(request, 'hospital/patientsignup.html', context=mydict)
 
 #-----------for checking user is doctor , patient or admin(by sumit)
 def is_admin(user):
