@@ -28,23 +28,38 @@ class Doctor(models.Model):
 
 
 
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+
 class Patient(models.Model):
-    user=models.OneToOneField(User,on_delete=models.CASCADE)
-    profile_pic= models.ImageField(upload_to='profile_pic/PatientProfilePic/',null=True,blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    profile_pic = models.ImageField(
+        upload_to='profile_pic/PatientProfilePic/', null=True, blank=True
+    )
     address = models.CharField(max_length=40)
-    mobile = models.CharField(max_length=20,null=False)
-    symptoms = models.CharField(max_length=100,null=False)
+    mobile = models.CharField(max_length=20, null=False)
+    symptoms = models.CharField(max_length=100, null=False)
     assignedDoctorId = models.PositiveIntegerField(null=True)
-    admitDate=models.DateField(auto_now=True)
-    status=models.BooleanField(default=False)
+    admitDate = models.DateField(default=timezone.now)      # <-- use default, not auto_now
+    status = models.BooleanField(default=False)
+
+    # NEW: auto-updates on every save (create or edit)
+    last_updated = models.DateTimeField(auto_now=True)
+
     @property
     def get_name(self):
-        return self.user.first_name+" "+self.user.last_name
+        return f"{self.user.first_name} {self.user.last_name}".strip()
+
     @property
     def get_id(self):
         return self.user.id
+
     def __str__(self):
-        return self.user.first_name+" ("+self.symptoms+")"
+        return f"{self.user.first_name} ({self.symptoms})"
+
+    class Meta:
+        ordering = ['-last_updated']       # default ordering for admin / querysets
 
 class PatientEMR(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emr_records')

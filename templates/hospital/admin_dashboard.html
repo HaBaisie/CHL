@@ -31,7 +31,7 @@
     <!-- END OPTIONAL CARD -->
 
     <div class="row">
-        <!-- ==== DOCTORS TABLE ==== -->
+        <!-- ==== DOCTORS TABLE (unchanged) ==== -->
         <div class="col-md-5" style="margin-left:2%;">
             <div class="card">
                 <div class="card-header text-center bg-primary text-white">
@@ -70,43 +70,72 @@
             </div>
         </div>
 
-        <!-- ==== PATIENTS TABLE ==== -->
+        <!-- ==== PATIENTS TABLE – NOW WITH SEARCH ==== -->
         <div class="col-md-5" style="margin-left:5%;">
             <div class="card">
-                <div class="card-header text-center bg-primary text-white">
-                    <h6>Recent Patients</h6>
+                <div class="card-header text-center bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Recent Patients</h6>
+
+                    <!-- SEARCH FORM (inside header for compact look) -->
+                    <form method="get" class="d-flex mb-0">
+                        <input class="form-control form-control-sm me-1"
+                               type="search"
+                               name="q"
+                               placeholder="Name / Mobile / Symptoms"
+                               value="{{ q|default:'' }}"
+                               style="width:180px;">
+                        <button class="btn btn-sm btn-outline-light" type="submit">
+                            Search
+                        </button>
+                        {% if q %}
+                            <a href="{{ request.path }}" class="btn btn-sm btn-outline-light ms-1">
+                                Clear
+                            </a>
+                        {% endif %}
+                    </form>
                 </div>
+
                 <div class="card-body p-0">
-                    <table class="table table-hover table-striped mb-0">
-                        <thead class="thead-dark">
-                            <tr>
-                                <th>Name</th>
-                                <th>Symptoms</th>
-                                <th>Contact</th>
-                                <th>Address</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for p in patients %}
-                            <tr>
-                                <td>{{ p.get_name }}</td>
-                                <td>{{ p.symptoms }}</td>
-                                <td>{{ p.mobile }}</td>
-                                <td>{{ p.address }}</td>
-                                <td>
-                                    {% if p.status %}
-                                        <span class="badge badge-primary">Admitted</span>
-                                    {% else %}
-                                        <span class="badge badge-success">On Hold</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="5" class="text-center">No patients yet.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Symptoms</th>
+                                    <th>Contact</th>
+                                    <th>Address</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in patients %}
+                                <tr>
+                                    <td>{{ p.get_name }}</td>
+                                    <td>{{ p.symptoms }}</td>
+                                    <td>{{ p.mobile }}</td>
+                                    <td>{{ p.address }}</td>
+                                    <td>
+                                        {% if p.status %}
+                                            <span class="badge badge-primary">Admitted</span>
+                                        {% else %}
+                                            <span class="badge badge-success">On Hold</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        {% if q %}
+                                            No patients match “<strong>{{ q }}</strong>”.
+                                        {% else %}
+                                            No patients yet.
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -4,17 +4,50 @@
 {% block title %}Lab Dashboard{% endblock %}
 
 {% block content %}
+
 <div class="row mb-4">
   <div class="col">
     <h3 class="text-primary mb-0">
-      <i class="fas fa-users me-2"></i>
       Admitted Patients
     </h3>
     <p class="text-muted">Click to add lab results</p>
   </div>
+  <div class="col-auto">
+    <!-- ADD THIS BUTTON -->
+    <a href="{% url 'lab-pending-requests' %}" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-list-check me-1"></i> View Pending Requests
+    </a>
+  </div>
 </div>
 
-<div class="card">
+<!-- ==== SEARCH CARD ==== -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      Patients ({{ patients|length }})
+    </h5>
+
+    <!-- SEARCH FORM -->
+    <form method="get" class="d-flex">
+      <input class="form-control form-control-sm me-2"
+             type="search"
+             name="q"
+             placeholder="Name, Mobile, Symptoms..."
+             value="{{ q|default:'' }}"
+             style="width: 230px;"
+             autofocus>
+      <button class="btn btn-outline-light btn-sm" type="submit">
+        Search
+      </button>
+      {% if q %}
+        <a href="{% url 'lab-dashboard' %}" class="btn btn-outline-light btn-sm ms-1">
+          Clear
+        </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- ==== PATIENT LIST ==== -->
   <div class="card-body p-0">
     <ul class="list-group list-group-flush">
       {% for p in patients %}
@@ -23,27 +56,36 @@
           <strong class="text-dark">{{ p.get_name }}</strong>
           <br>
           <small class="text-muted">
-            <i class="fas fa-phone-alt"></i> {{ p.mobile }}
+            {{ p.mobile }}
             {% if p.symptoms %}
-            | <i class="fas fa-notes-medical"></i> {{ p.symptoms|truncatewords:5 }}
+            | {{ p.symptoms|truncatewords:5 }}
             {% endif %}
           </small>
         </div>
         <a href="{% url 'lab-add-result' p.id %}" class="btn btn-primary btn-sm">
-          <i class="fas fa-plus-circle"></i> Add Result
+          Add Result
         </a>
       </li>
       {% empty %}
       <li class="list-group-item text-center py-5">
-        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-        <p class="text-muted">No admitted patients found.</p>
+        {% if q %}
+          <p class="text-muted">No patients match "<strong>{{ q }}</strong>"</p>
+        {% else %}
+          <p class="text-muted">No admitted patients found.</p>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>
   </div>
+
+  <!-- ==== STATS CARD ==== -->
+  <div class="card-footer bg-light small text-muted text-center">
+    Showing {{ patients|length }} patient{{ patients|pluralize }}
+    {% if q %} matching "<strong>{{ q }}</strong>"{% endif %}
+  </div>
 </div>
 
-<!-- Optional: Stats Card -->
+<!-- Optional: Stats Row -->
 <div class="row mt-4">
   <div class="col-md-4">
     <div class="card text-white bg-primary">
@@ -57,4 +99,5 @@
     </div>
   </div>
 </div>
-{% endblock %}
+
+{% endblock content %}
