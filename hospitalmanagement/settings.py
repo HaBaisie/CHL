@@ -1,6 +1,6 @@
 """
 Django settings for hospitalmanagement project.
-Hard-coded PostgreSQL URL for local testing.
+Fully configured for Render.com (free or paid tier) with Cloudinary for permanent media storage.
 """
 
 import os
@@ -12,17 +12,18 @@ import dj_database_url
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
-MEDIA_DIR = os.path.join(BASE_DIR, 'media')
 
 # ------------------------------------------------------------------
 # Security
 # ------------------------------------------------------------------
-SECRET_KEY = 'hpbv()ep00boce&o0w7z1h)st148(*m@6@-rk$nn)(n9ojj4c0'  # change in prod
-DEBUG = True  # set False on Render
-# Add this line anywhere in settings.py
-RENDER = True  # This tells your code you're on Render
+SECRET_KEY = os.environ.get('SECRET_KEY', 'hpbv()ep00boce&o0w7z1h)st148(*m@6@-rk$nn)(n9ojj4c0')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'  # Render sets DEBUG=False automatically
 
-ALLOWED_HOSTS = ['*']  # tighten on Render: ['your-app.onrender.com']
+ALLOWED_HOSTS = [
+    'chl-4rj7.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 
 # ------------------------------------------------------------------
 # Application definition
@@ -34,12 +35,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'hospital',
+
+    # Third-party apps
     'widget_tweaks',
+    'cloudinary_storage',
+    'cloudinary',
+
+    # Local apps
+    'hospital',
 ]
 
+# ------------------------------------------------------------------
+# Middleware
+# ------------------------------------------------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',        # Critical for static files on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -50,6 +61,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'hospitalmanagement.urls'
 
+# ------------------------------------------------------------------
+# Templates
+# ------------------------------------------------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -69,11 +83,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'hospitalmanagement.wsgi.application'
 
 # ------------------------------------------------------------------
-# DATABASE – HARD-CODED FOR LOCAL TESTING
+# Database - Auto-detect from Render's DATABASE_URL or fallback
 # ------------------------------------------------------------------
 DATABASES = {
-    'default': dj_database_url.parse(
-        'postgresql://chl:V10qloYppfydmirjiTHGVhm3CqCaKd7J@dpg-d41l7dre5dus73de6vig-a.oregon-postgres.render.com/chl?sslmode=require',
+    'default': dj_database_url.config(
+        default='postgresql://chl:V10qloYppfydmirjiTHGVhm3CqCaKd7J@dpg-d41l7dre5dus73de6vig-a.oregon-postgres.render.com/chl',
         conn_max_age=600,
         conn_health_checks=True
     )
@@ -98,32 +112,43 @@ USE_I18N = True
 USE_TZ = True
 
 # ------------------------------------------------------------------
-# Static & Media
+# Static files (CSS, JavaScript, your own images in static/)
 # ------------------------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [STATIC_DIR]
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# WhiteNoise: Compress + cache static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ------------------------------------------------------------------
-# Login
+# MEDIA FILES → CLOUDINARY (PERMANENT & FREE STORAGE)
+# ------------------------------------------------------------------
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dnhbjlndu',
+    'API_KEY': '262683384485462',
+    'API_SECRET': 'v3Dkddx6kKZGc05tkbg5vOOVcOM',
+}
+
+# ------------------------------------------------------------------
+# Login & Auth
 # ------------------------------------------------------------------
 LOGIN_REDIRECT_URL = '/afterlogin'
 
 # ------------------------------------------------------------------
-# Email (local testing – use your own)
+# Email Configuration
 # ------------------------------------------------------------------
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'from@gmail.com'
-EMAIL_HOST_PASSWORD = ''  # fill in locally
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'from@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_RECEIVING_USER = ['to@gmail.com']
 
 # ------------------------------------------------------------------
-# Default primary key
+# Default primary key field type
 # ------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
