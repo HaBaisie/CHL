@@ -55,4 +55,4 @@ whitenoise
 cloudinary
 django-cloudinary-storage
 django-widget-tweaks
-psycopg2-binary
+psycopg[binary] >=3.2
