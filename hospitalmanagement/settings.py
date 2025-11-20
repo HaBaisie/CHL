@@ -19,6 +19,8 @@ MEDIA_DIR = os.path.join(BASE_DIR, 'media')
 # ------------------------------------------------------------------
 SECRET_KEY = 'hpbv()ep00boce&o0w7z1h)st148(*m@6@-rk$nn)(n9ojj4c0'  # change in prod
 DEBUG = True  # set False on Render
+# Add this line anywhere in settings.py
+RENDER = True  # This tells your code you're on Render
 
 ALLOWED_HOSTS = ['*']  # tighten on Render: ['your-app.onrender.com']
 

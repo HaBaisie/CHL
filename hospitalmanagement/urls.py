@@ -135,3 +135,6 @@ urlpatterns = [
     path('doctor/emr/<int:patient_id>/<int:emr_id>/', views.doctor_manage_emr, name='doctor-edit-emr'),
     
 ]
+# THIS IS THE MAGIC THAT MAKES IMAGES APPEAR ON RENDER
+if settings.DEBUG or getattr(settings, 'RENDER', False):
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
