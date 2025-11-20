@@ -54,5 +54,5 @@ dj-database-url
 whitenoise
 cloudinary
 django-cloudinary-storage
-django-widget-tweaksS
+django-widget-tweaks
 psycopg2-binary
