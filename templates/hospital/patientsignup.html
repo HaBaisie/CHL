@@ -99,9 +99,18 @@
               <div class="form-group">
                 {% render_field patientForm.mobile class="form-control" pattern="[6789][0-9]{9}" placeholder="Contact Number" %}
               </div>
-              <div class="form-group">
-                {% render_field patientForm.assignedDoctorId class="form-control" placeholder="Doctor" %}
-              </div>
+             <div class="form-group">
+                <label for="id_assignedDoctorId">Assigned Doctor <span class="text-danger">*</span></label>
+                <select name="assignedDoctorId" id="id_assignedDoctorId" class="form-control" required>
+                    <option value="">— Select a Doctor —</option>
+                    {% for doctor in doctors %}
+                        <option value="{{ doctor.user.id }}">
+                            Dr. {{ doctor.get_name }} - {{ doctor.department }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Choose the doctor who will manage this patient</small>
+            </div>
 
             </div>
           </div>

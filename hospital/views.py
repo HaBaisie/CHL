@@ -76,7 +76,7 @@ def doctor_signup_view(request):
     mydict={'userForm':userForm,'doctorForm':doctorForm}
     if request.method=='POST':
         userForm=forms.DoctorUserForm(request.POST)
-        doctorForm=forms.DoctorForm(request.POST,request.FILES)
+        doctorForm=forms.DoctorForm(request.POST,request.POST)
         if userForm.is_valid() and doctorForm.is_valid():
             user=userForm.save()
             user.set_password(user.password)
@@ -88,26 +88,56 @@ def doctor_signup_view(request):
             my_doctor_group[0].user_set.add(user)
         return HttpResponseRedirect('doctorlogin')
     return render(request,'hospital/doctorsignup.html',context=mydict)
+
+# hospital/views.py
+
+from django.contrib import messages
+
+# hospital/views.py
+
 def patient_signup_view(request):
-    userForm=forms.PatientUserForm()
-    patientForm=forms.PatientForm()
-    mydict={'userForm':userForm,'patientForm':patientForm}
-    if request.method=='POST':
-        userForm=forms.PatientUserForm(request.POST)
-        patientForm=forms.PatientForm(request.POST,request.FILES)
+    doctors = models.Doctor.objects.filter(status=True).select_related('user')
+
+    if request.method == 'POST':
+        userForm = forms.PatientUserForm(request.POST)
+        patientForm = forms.PatientForm(request.POST, request.FILES)
+
         if userForm.is_valid() and patientForm.is_valid():
-            user=userForm.save()
-            user.set_password(user.password)
+            # Save user
+            user = userForm.save(commit=False)
+            user.set_password(userForm.cleaned_data['password'])
             user.save()
-            patient=patientForm.save(commit=False)
-            patient.user=user
-            patient.assignedDoctorId=request.POST.get('assignedDoctorId')
-            patient.status=True  # ← AUTO-APPROVE
-            patient=patient.save()
-            my_patient_group = Group.objects.get_or_create(name='PATIENT')
-            my_patient_group[0].user_set.add(user)
-        return HttpResponseRedirect('patientlogin')
-    return render(request,'hospital/patientsignup.html',context=mydict)
+
+            # Save patient
+            patient = patientForm.save(commit=False)
+            patient.user = user
+
+            # Get doctor User ID from dropdown
+            doctor_user_id = request.POST.get('assignedDoctorId')
+            if doctor_user_id and doctor_user_id.isdigit():
+                patient.assignedDoctorId = int(doctor_user_id)
+            else:
+                patient.assignedDoctorId = None
+
+            patient.status = True
+            patient.save()
+
+            # Add to group
+            group, _ = Group.objects.get_or_create(name='PATIENT')
+            group.user_set.add(user)
+
+            messages.success(request, "Patient registered successfully!")
+            return redirect('patientlogin')
+
+    else:
+        userForm = forms.PatientUserForm()
+        patientForm = forms.PatientForm()
+
+    return render(request, 'hospital/patientsignup.html', {
+        'userForm': userForm,
+        'patientForm': patientForm,
+        'doctors': doctors,
+    })
 #-----------for checking user is doctor , patient or admin(by sumit)
 def is_admin(user):
     return user.groups.filter(name='ADMIN').exists()
@@ -203,11 +233,11 @@ def update_doctor_view(request,pk):
     doctor=models.Doctor.objects.get(id=pk)
     user=models.User.objects.get(id=doctor.user_id)
     userForm=forms.DoctorUserForm(instance=user)
-    doctorForm=forms.DoctorForm(request.FILES,instance=doctor)
+    doctorForm=forms.DoctorForm(request.POST,instance=doctor)
     mydict={'userForm':userForm,'doctorForm':doctorForm}
     if request.method=='POST':
         userForm=forms.DoctorUserForm(request.POST,instance=user)
-        doctorForm=forms.DoctorForm(request.POST,request.FILES,instance=doctor)
+        doctorForm=forms.DoctorForm(request.POST,request.POST,instance=doctor)
         if userForm.is_valid() and doctorForm.is_valid():
             user=userForm.save()
             user.set_password(user.password)
@@ -225,7 +255,7 @@ def admin_add_doctor_view(request):
     mydict={'userForm':userForm,'doctorForm':doctorForm}
     if request.method=='POST':
         userForm=forms.DoctorUserForm(request.POST)
-        doctorForm=forms.DoctorForm(request.POST, request.FILES)
+        doctorForm=forms.DoctorForm(request.POST, request.POST)
         if userForm.is_valid() and doctorForm.is_valid():
             user=userForm.save()
             user.set_password(user.password)
@@ -297,11 +327,11 @@ def update_patient_view(request,pk):
     patient=models.Patient.objects.get(id=pk)
     user=models.User.objects.get(id=patient.user_id)
     userForm=forms.PatientUserForm(instance=user)
-    patientForm=forms.PatientForm(request.FILES,instance=patient)
+    patientForm=forms.PatientForm(request.POST,instance=patient)
     mydict={'userForm':userForm,'patientForm':patientForm}
     if request.method=='POST':
         userForm=forms.PatientUserForm(request.POST,instance=user)
-        patientForm=forms.PatientForm(request.POST,request.FILES,instance=patient)
+        patientForm=forms.PatientForm(request.POST,instance=patient)
         if userForm.is_valid() and patientForm.is_valid():
             user=userForm.save()
             user.set_password(user.password)
@@ -320,7 +350,7 @@ def admin_add_patient_view(request):
     mydict={'userForm':userForm,'patientForm':patientForm}
     if request.method=='POST':
         userForm=forms.PatientUserForm(request.POST)
-        patientForm=forms.PatientForm(request.POST,request.FILES)
+        patientForm=forms.PatientForm(request.POST)
         if userForm.is_valid() and patientForm.is_valid():
             user=userForm.save()
             user.set_password(user.password)
@@ -1101,7 +1131,7 @@ def pharmacy_signup_view(request):
     pharmacyForm = forms.PharmacyForm()
     if request.method == 'POST':
         userForm = forms.PharmacyUserForm(request.POST)
-        pharmacyForm = forms.PharmacyForm(request.POST, request.FILES)
+        pharmacyForm = forms.PharmacyForm(request.POST, request.POST)
         if userForm.is_valid() and pharmacyForm.is_valid():
             user = userForm.save(commit=False)
             user.set_password(userForm.cleaned_data['password'])
@@ -1119,7 +1149,7 @@ def lab_signup_view(request):
     labForm = forms.LabForm()
     if request.method == 'POST':
         userForm = forms.LabUserForm(request.POST)
-        labForm = forms.LabForm(request.POST, request.FILES)
+        labForm = forms.LabForm(request.POST, request.POST)
         if userForm.is_valid() and labForm.is_valid():
             user = userForm.save(commit=False)
             user.set_password(userForm.cleaned_data['password'])
@@ -1140,7 +1170,7 @@ def nurse_signup_view(request):
     nurseForm = forms.NurseForm()
     if request.method == 'POST':
         userForm = forms.NurseUserForm(request.POST)
-        nurseForm = forms.NurseForm(request.POST, request.FILES)
+        nurseForm = forms.NurseForm(request.POST, request.POST)
         if userForm.is_valid() and nurseForm.is_valid():
             user = userForm.save(commit=False)
             user.set_password(userForm.cleaned_data['password'])
@@ -1278,7 +1308,7 @@ def account_signup_view(request):
     accountForm = forms.AccountForm()
     if request.method == 'POST':
         userForm = forms.AccountUserForm(request.POST)
-        accountForm = forms.AccountForm(request.POST, request.FILES)
+        accountForm = forms.AccountForm(request.POST, request.POST)
         if userForm.is_valid() and accountForm.is_valid():
             user = userForm.save(commit=False)
             user.set_password(userForm.cleaned_data['password'])
@@ -1549,3 +1579,107 @@ def doctor_view_patient_emr(request, patient_id):
         'doctor': doctor,
     }
     return render(request, 'hospital/doctor_view_patient_emr.html', context)
+
+
+
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.contrib import messages
+
+def custom_logout_view(request):
+    logout(request)
+    messages.success(request, "You have been logged out successfully.")
+    return redirect('home')  # Goes to http://127.0.0.1:8000/
+
+
+# ==================== FINAL AUDIT VIEWS – 100% WORKING ====================
+
+
+from django.db.models import Sum, Count
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from hospital.views import is_admin   # ← This is the correct import you already use
+
+@login_required(login_url='adminlogin')
+@user_passes_test(is_admin)
+def admin_pharmacy_audit_view(request):
+    today = timezone.now().date()
+    date_filter = request.GET.get('date')
+    month_filter = request.GET.get('month')
+
+    selected_date = date_filter or today
+
+    # Daily receipts
+    daily_receipts = PharmacyReceipt.objects.filter(issued_at__date=selected_date)
+    daily_total = daily_receipts.aggregate(t=Sum('total_amount'))['t'] or 0
+    daily_count = daily_receipts.count()
+
+    # DAILY DRUGS – FIXED VERSION (THIS WORKS 100%)
+    from django.db.models import F
+    daily_drugs = DispensedDrug.objects.filter(
+        dispensed_at__date=selected_date
+    ).values('drug_name').annotate(
+        total_amount=Sum(F('quantity') * F('price_per_unit'))
+    ).order_by('-total_amount')
+
+    # Monthly
+    if month_filter:
+        y, m = map(int, month_filter.split('-'))
+        monthly_receipts = PharmacyReceipt.objects.filter(issued_at__year=y, issued_at__month=m)
+    else:
+        monthly_receipts = PharmacyReceipt.objects.filter(
+            issued_at__year=today.year, issued_at__month=today.month
+        )
+
+    monthly_total = monthly_receipts.aggregate(t=Sum('total_amount'))['t'] or 0
+    monthly_count = monthly_receipts.count()
+
+    context = {
+        'daily_total': daily_total,
+        'daily_count': daily_count,
+        'daily_drugs': daily_drugs,
+        'monthly_total': monthly_total,
+        'monthly_count': monthly_count,
+        'selected_date': selected_date,
+        'selected_month': month_filter or today.strftime('%Y-%m'),
+        'today': today,
+    }
+    return render(request, 'hospital/admin_pharmacy_audit.html', context)
+@login_required(login_url='adminlogin')
+@user_passes_test(is_admin)
+def admin_lab_audit_view(request):
+    today = timezone.now().date()
+    date_filter = request.GET.get('date')
+    month_filter = request.GET.get('month')
+
+    selected_date = date_filter or today
+
+    # Daily tests
+    daily_tests = LabResult.objects.filter(performed_at__date=selected_date)
+    daily_count = daily_tests.count()
+    daily_by_type = daily_tests.values('test_name').annotate(count=Count('id')).order_by('-count')
+
+    # Monthly tests
+    if month_filter:
+        y, m = map(int, month_filter.split('-'))
+        monthly_tests = LabResult.objects.filter(performed_at__year=y, performed_at__month=m)
+    else:
+        monthly_tests = LabResult.objects.filter(
+            performed_at__year=today.year,
+            performed_at__month=today.month
+        )
+
+    monthly_count = monthly_tests.count()
+    monthly_by_type = monthly_tests.values('test_name').annotate(count=Count('id')).order_by('-count')
+
+    context = {
+        'daily_count': daily_count,
+        'daily_by_type': daily_by_type,
+        'monthly_count': monthly_count,
+        'monthly_by_type': monthly_by_type,
+        'selected_date': selected_date,
+        'selected_month': month_filter or today.strftime('%Y-%m'),
+        'today': today,
+    }
+    return render(request, 'hospital/admin_lab_audit.html', context)
+

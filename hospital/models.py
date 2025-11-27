@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from cloudinary.models import CloudinaryField
 
 
 departments=[('Cardiologist','Cardiologist'),
@@ -12,7 +12,7 @@ departments=[('Cardiologist','Cardiologist'),
 ]
 class Doctor(models.Model):
     user=models.OneToOneField(User,on_delete=models.CASCADE)
-    profile_pic= models.ImageField(upload_to='profile_pic/DoctorProfilePic/',null=True,blank=True)
+    profile_pic = CloudinaryField('profile_pic',null=True,blank=True)
     address = models.CharField(max_length=40)
     mobile = models.CharField(max_length=20,null=True)
     department= models.CharField(max_length=50,choices=departments,default='Cardiologist')
@@ -34,8 +34,7 @@ from django.utils import timezone
 
 class Patient(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_pic = models.ImageField(
-        upload_to='profile_pic/PatientProfilePic/', null=True, blank=True
+    profile_pic = CloudinaryField('profile_pic', null=True, blank=True
     )
     address = models.CharField(max_length=40)
     mobile = models.CharField(max_length=20, null=False)
@@ -189,7 +188,7 @@ class LabResult(models.Model):
 # -------------------------------------------------
 class Pharmacy(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_pic = models.ImageField(upload_to='profile_pic/PharmacyProfilePic/', null=True, blank=True)
+    profile_pic = CloudinaryField('profile_pic', null=True, blank=True)
     address = models.CharField(max_length=40)
     mobile = models.CharField(max_length=20, null=True)
 
@@ -206,7 +205,7 @@ class Pharmacy(models.Model):
 # -------------------------------------------------
 class Lab(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_pic = models.ImageField(upload_to='profile_pic/LabProfilePic/', null=True, blank=True)
+    profile_pic = CloudinaryField('profile_pic', null=True, blank=True)
     address = models.CharField(max_length=40)
     mobile = models.CharField(max_length=20, null=True)
 
@@ -222,7 +221,7 @@ class Lab(models.Model):
 # -------------------------------------------------
 class Nurse(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_pic = models.ImageField(upload_to='profile_pic/NurseProfilePic/', null=True, blank=True)
+    profile_pic = CloudinaryField('profile_pic', null=True, blank=True)
     address = models.CharField(max_length=40)
     mobile = models.CharField(max_length=20, null=True)
     department = models.CharField(max_length=50)
@@ -259,7 +258,7 @@ class VitalSigns(models.Model):
 # -------------------------------------------------
 class Account(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_pic = models.ImageField(upload_to='profile_pic/AccountProfilePic/', null=True, blank=True)
+    profile_pic = CloudinaryField('profile_pic', null=True, blank=True)
     address = models.CharField(max_length=40)
     mobile = models.CharField(max_length=20, null=True)
     status = models.BooleanField(default=False)

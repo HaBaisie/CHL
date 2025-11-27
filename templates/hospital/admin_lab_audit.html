@@ -1,0 +1,97 @@
+{% extends "hospital/admin_base.html" %}
+{% block title %}Lab Audit History{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <h2 class="mb-4 text-info">
+    <i class="fas fa-vial me-3"></i> Laboratory Audit History
+  </h2>
+
+  <!-- Filters -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label fw-bold">Select Date</label>
+          <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label fw-bold">Select Month</label>
+          <input type="month" name="month" value="{{ selected_month }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-info w-100 text-white">
+            <i class="fas fa-search"></i> View
+          </button>
+        </div>
+      </form>
+      <div class="mt-3 text-end">
+        <a href="{% url 'admin-lab-audit' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-sync"></i> Today
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-6">
+      <div class="card bg-info text-white shadow-sm border-0">
+        <div class="card-header fw-bold">
+          <i class="fas fa-calendar-day"></i> 
+          {% if selected_date == today %}Today{% else %}{{ selected_date|date:"d M Y" }}{% endif %}
+        </div>
+        <div class="card-body text-center">
+          <h2 class="display-5">{{ daily_count }}</h2>
+          <p class="mb-0 fs-4">Tests Performed</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card bg-warning text-dark shadow-sm border-0">
+        <div class="card-header fw-bold">
+          <i class="fas fa-calendar-month"></i> 
+          {% if selected_month %}{{ selected_month|date:"F Y" }}{% else %}This Month{% endif %}
+        </div>
+        <div class="card-body text-center">
+          <h2 class="display-5">{{ monthly_count }}</h2>
+          <p class="mb-0 fs-4">Tests Performed</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tests by Type -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex justify-content-between">
+      <h5 class="mb-0">Tests Performed on {{ selected_date|date:"d M Y" }}</h5>
+      <button onclick="window.print()" class="btn btn-sm btn-outline-info">
+        <i class="fas fa-print"></i> Print
+      </button>
+    </div>
+    <div class="card-body">
+      {% if daily_by_type %}
+      <div class="row">
+        {% for item in daily_by_type %}
+        <div class="col-md-4 mb-3">
+          <div class="border rounded p-3 bg-light">
+            <h6 class="mb-1">{{ item.test_name }}</h6>
+            <span class="badge bg-info fs-6">{{ item.count }} test{{ item.count|pluralize }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted text-center py-4">No lab tests on this date</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  @media print {
+    .no-print, .navbar, .menu { display: none !important; }
+    body { background: white; }
+  }
+</style>
+{% endblock %}

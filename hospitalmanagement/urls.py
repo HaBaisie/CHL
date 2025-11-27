@@ -34,8 +34,8 @@ urlpatterns = [
     path('lab-login', LoginView.as_view(template_name='hospital/lab_login.html'), name='lab-login'),
 
     # ──────── LOGOUT (ONLY ONE!) ────────
-    path('logout', LogoutView.as_view(template_name='hospital/logout.html', next_page='home'), name='logout'),
-
+    # path('logout', LogoutView.as_view(template_name='hospital/logout.html', next_page='home'), name='logout'),
+    path('logout/', views.custom_logout_view, name='logout'),
     # ──────── AFTER LOGIN REDIRECT ────────
     path('afterlogin', views.afterlogin_view, name='afterlogin'),
 
@@ -135,6 +135,9 @@ urlpatterns = [
     # hospital/urls.py
     path('doctor/emr/<int:patient_id>/', views.doctor_manage_emr, name='doctor-add-emr'),
     path('doctor/emr/<int:patient_id>/<int:emr_id>/', views.doctor_manage_emr, name='doctor-edit-emr'),
+    path('admin-pharmacy-audit/', views.admin_pharmacy_audit_view, name='admin-pharmacy-audit'),
+    path('admin-lab-audit/', views.admin_lab_audit_view, name='admin-lab-audit'),
+    
     
 ]
 # THIS IS THE MAGIC THAT MAKES IMAGES APPEAR ON RENDER

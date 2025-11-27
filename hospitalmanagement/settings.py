@@ -6,6 +6,9 @@ Fully configured for Render.com (free or paid tier) with Cloudinary for permanen
 import os
 import dj_database_url
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 # ------------------------------------------------------------------
 # Build paths
 # ------------------------------------------------------------------
@@ -111,19 +114,12 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# ------------------------------------------------------------------
-# Static files (CSS, JavaScript, your own images in static/)
-# ------------------------------------------------------------------
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [STATIC_DIR]
 
-# WhiteNoise: Compress + cache static files
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ------------------------------------------------------------------
-# MEDIA FILES → CLOUDINARY (PERMANENT & FREE STORAGE)
-# ------------------------------------------------------------------
+
+# ... all your other settings ...
+
+# CLOUDINARY — MUST COME BEFORE STATIC SETTINGS
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 CLOUDINARY_STORAGE = {
@@ -132,6 +128,24 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': 'v3Dkddx6kKZGc05tkbg5vOOVcOM',
 }
 
+# ==================== CRITICAL: ACTIVATE CLOUDINARY ====================
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+    secure=True
+)
+# ===========================================================================
+
+# STATIC FILES
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [STATIC_DIR]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # ------------------------------------------------------------------
 # Login & Auth
 # ------------------------------------------------------------------
