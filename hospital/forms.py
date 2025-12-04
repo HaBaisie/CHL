@@ -248,3 +248,60 @@ class PatientEMRForm(forms.ModelForm):
             'prescription': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
+
+# ------------------------------------------------------------------
+# VITAL SIGNS FORM — THIS WAS MISSING!
+# ------------------------------------------------------------------
+class VitalSignsForm(forms.ModelForm):
+    class Meta:
+        model = models.VitalSigns
+        fields = [
+            'temperature',
+            'blood_pressure',
+            'pulse_rate',
+            'respiratory_rate',
+            'oxygen_saturation',
+            'weight',
+            'height',
+            'notes',
+        ]
+        widgets = {
+            'temperature': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'placeholder': 'e.g. 37.5'
+            }),
+            'blood_pressure': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. 120/80'
+            }),
+            'pulse_rate': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'bpm'
+            }),
+            'respiratory_rate': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'breaths/min'
+            }),
+            'oxygen_saturation': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': '%',
+                'min': 0,
+                'max': 100
+            }),
+            'weight': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'placeholder': 'kg'
+            }),
+            'height': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'meters'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Any additional observations...'
+            }),
+        }

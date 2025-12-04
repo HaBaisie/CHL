@@ -1,69 +1,133 @@
 {% extends 'hospital/admin_base.html' %}
 {% load static %}
+
 {% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">Record Vital Signs</h3>
-        <div>
-            <span class="text-muted">{{ nurse.get_name }}</span>
-        </div>
+
+<div class="container mt-4">
+    <h2>DEBUG MODE: Nurse Add Vitals</h2>
+
+    <!-- 1. First, let's see if nurse and patient exist -->
+    <div class="alert alert-info">
+        <strong>Nurse Object:</strong> {{ nurse|default:"<span class='text-danger'>NULL / MISSING</span>" }}<br>
+        <strong>Nurse Name:</strong> {{ nurse.get_name|default:"N/A" }}<br>
+        <strong>Nurse Profile Pic Field:</strong> {{ nurse.profile_pic|default:"<i>empty</i>" }}<br>
+        <strong>Has Profile Pic?</strong> 
+        {% if nurse.profile_pic %} YES {% else %} <span class="text-danger">NO</span> {% endif %}
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Patient: {{ patient.get_name }}</h5>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.temperature.id_for_label }}">Temperature (°C)</label>
-                        {{ form.temperature }}
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.blood_pressure.id_for_label }}">Blood Pressure (mmHg)</label>
-                        {{ form.blood_pressure }}
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.pulse_rate.id_for_label }}">Pulse Rate (bpm)</label>
-                        {{ form.pulse_rate }}
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ form.respiratory_rate.id_for_label }}">Respiratory Rate (breaths/min)</label>
-                        {{ form.respiratory_rate }}
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="{{ form.oxygen_saturation.id_for_label }}">Oxygen Saturation (%)</label>
-                        {{ form.oxygen_saturation }}
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="{{ form.weight.id_for_label }}">Weight (kg)</label>
-                        {{ form.weight }}
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="{{ form.height.id_for_label }}">Height (m)</label>
-                        {{ form.height }}
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="{{ form.notes.id_for_label }}">Additional Notes</label>
-                    {{ form.notes }}
-                </div>
-
-                <div class="d-flex justify-content-between">
-                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">Back</button>
-                    <button type="submit" class="btn btn-primary">Save Vitals</button>
-                </div>
-            </form>
-        </div>
+    <div class="alert alert-success">
+        <strong>Patient:</strong> {{ patient.get_name }} (ID: {{ patient.id }})
     </div>
+
+    <!-- 2. Show the form only if everything is OK -->
+    {% if nurse and patient %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Record Vital Signs for {{ patient.get_name }}</h4>
+                <div class="d-flex align-items-center gap-3">
+                    {% if nurse.profile_pic %}
+                        <img src="{{ nurse.profile_pic.url }}" 
+                             alt="{{ nurse.get_name }}" 
+                             class="rounded-circle" width="45" height="45">
+                    {% else %}
+                        <img src="{% static 'images/nurse.png' %}" 
+                             class="rounded-circle" width="45" height="45" alt="Nurse">
+                    {% endif %}
+                    <div>
+                        <strong>{{ nurse.get_name }}</strong><br>
+                        <small class="text-muted">Nurse</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <h5>Form Errors:</h5>
+                            {{ form.errors }}
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label>{{ form.temperature.label }}</label>
+                            {{ form.temperature }}
+                        </div>
+                        <div class="col-md-6">
+                            <label>{{ form.blood_pressure.label }}</label>
+                            {{ form.blood_pressure }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-3">
+                        <div class="col-md-6">
+                            <label>{{ form.pulse_rate.label }}</label>
+                            {{ form.pulse_rate }}
+                        </div>
+                        <div class="col-md-6">
+                            <label>{{ form.respiratory_rate.label }}</label>
+                            {{ form.respiratory_rate }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-3">
+                        <div class="col-md-4">
+                            <label>{{ form.oxygen_saturation.label }}</label>
+                            {{ form.oxygen_saturation }}
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ form.weight.label }}</label>
+                            {{ form.weight }}
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ form.height.label }}</label>
+                            {{ form.height }}
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label>{{ form.notes.label }}</label>
+                        {{ form.notes }}
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">Save Vitals</button>
+                        <button type="button" class="btn btn-secondary" onclick="history.back()">Back</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">
+            <h4>Critical Error</h4>
+            <p>Nurse or Patient object is missing!</p>
+            <ul>
+                {% if not nurse %}<li>Nurse object is not being passed to template</li>{% endif %}
+                {% if not patient %}<li>Patient object is not being passed</li>{% endif %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <!-- 3. Full debug info at the bottom -->
+    <details class="mt-5 border p-3 bg-light">
+        <summary><strong>Full Debug Info (Click to expand)</strong></summary>
+        <pre>
+Context passed to template:
+nurse: {{ nurse }}
+patient: {{ patient }}
+form: {{ form }}
+request.user: {{ request.user }}
+request.user.groups: {{ request.user.groups.all }}
+
+Nurse.profile_pic type: {{ nurse.profile_pic|default:"None" }}
+Has attr 'url'? {% if nurse.profile_pic.url %} YES {% else %} NO {% endif %}
+
+Available static files: {% static 'images/nurse.png' %} → should resolve
+        </pre>
+    </details>
 </div>
+
 {% endblock %}

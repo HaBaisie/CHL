@@ -1212,27 +1212,77 @@ def nurse_patient_list(request):
         'nurse': nurse,
         'q': q
     })
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db import DatabaseError
+import traceback
+
 @login_required(login_url='nurse-login')
 @user_passes_test(lambda u: u.groups.filter(name='NURSE').exists())
 def nurse_add_vitals(request, patient_id):
-    patient = get_object_or_404(Patient, pk=patient_id)
-    nurse = models.Nurse.objects.get(user_id=request.user.id)
-   
-    if request.method == 'POST':
-        form = forms.VitalSignsForm(request.POST)
-        if form.is_valid():
-            vitals = form.save(commit=False)
-            vitals.patient = patient
-            vitals.nurse = nurse
-            vitals.save()
-            messages.success(request, f"Vitals recorded for {patient.get_name}")
-            return redirect('nurse-patient-list')
-    else:
-        form = forms.VitalSignsForm()
-    return render(request, 'hospital/nurse_add_vitals.html', {
-        'form': form,
-        'patient': patient,
-        'nurse': nurse
+    debug = {
+        'patient_id': patient_id,
+        'user': str(request.user),
+        'user_id': request.user.id,
+        'authenticated': request.user.is_authenticated,
+        'groups': [g.name for g in request.user.groups.all()],
+        'error': None,
+        'traceback': None,
+    }
+
+    patient = None
+    nurse = None
+
+    # Wrap EVERYTHING in try-except so we NEVER get 500
+    try:
+        # 1. Get Patient
+        try:
+            patient = models.Patient.objects.get(pk=patient_id, status=True)
+            debug['patient'] = f"Found: {patient.get_name} (ID: {patient.id})"
+        except models.Patient.DoesNotExist:
+            debug['error'] = f"Patient ID {patient_id} does not exist or is inactive (status=False)"
+        except Exception as e:
+            debug['error'] = f"Patient lookup failed: {str(e)}"
+
+        # 2. Get Nurse
+        try:
+            nurse = models.Nurse.objects.get(user=request.user)
+            debug['nurse'] = f"Found: {nurse.get_name} (ID: {nurse.id})"
+            debug['nurse_pic'] = nurse.profile_pic.url if nurse.profile_pic else "None"
+        except models.Nurse.DoesNotExist:
+            debug['error'] = "NURSE PROFILE DOES NOT EXIST for this user!"
+        except Exception as e:
+            debug['error'] = f"Nurse lookup failed: {str(e)}"
+
+        # 3. If both exist, proceed normally
+        if patient and nurse:
+            if request.method == 'POST':
+                form = forms.VitalSignsForm(request.POST)
+                if form.is_valid():
+                    vitals = form.save(commit=False)
+                    vitals.patient = patient
+                    vitals.nurse = nurse
+                    vitals.save()
+                    messages.success(request, f"Vitals saved for {patient.get_name}")
+                    return redirect('nurse-patient-list')
+            else:
+                form = forms.VitalSignsForm()
+
+            return render(request, 'hospital/nurse_add_vitals.html', {
+                'form': form,
+                'patient': patient,
+                'nurse': nurse,
+            })
+
+    except Exception as e:
+        debug['error'] = str(e)
+        debug['traceback'] = traceback.format_exc()
+
+    # If we get here → something failed → show debug page
+    return render(request, 'hospital/debug_nurse_vitals.html', {
+        'debug': debug,
+        'patient_id': patient_id,
     })
 @login_required(login_url='nurse-login')
 @user_passes_test(lambda u: u.groups.filter(name='NURSE').exists())
