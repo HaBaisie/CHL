@@ -52,11 +52,6 @@ class PatientUserForm(forms.ModelForm):
         fields = ['first_name', 'last_name', 'username', 'password']
         widgets = {'password': forms.PasswordInput()}
 
-# hospital/forms.py
-
-# hospital/forms.py
-
-# hospital/forms.py
 
 class PatientForm(forms.ModelForm):
     profile_pic = CloudinaryFileField(
