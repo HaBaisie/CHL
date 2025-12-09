@@ -349,3 +349,15 @@ class LabRequest(models.Model):
 
     def __str__(self):
         return f"{self.test_name} for {self.emr.patient.get_name}"
+    
+
+    # Add this at the END of hospital/models.py
+from django.contrib.auth.models import User
+from django.contrib.auth.validators import UnicodeUsernameValidator
+
+class CustomUsernameValidator(UnicodeUsernameValidator):
+    regex = r'^[\w.@+/-]+\Z'
+    message = 'Enter a valid username. This value may contain only letters, numbers, and /@/./+/-/_ characters.'
+
+# Replace the default validator on the User model
+User._meta.get_field('username').validators = [CustomUsernameValidator()]

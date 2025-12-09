@@ -2,7 +2,8 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.forms import inlineformset_factory
-from cloudinary.forms import CloudinaryFileField  # ← THIS IS THE KEY LINE
+from cloudinary.forms import CloudinaryFileField 
+from django.core.validators import RegexValidator # ← THIS IS THE KEY LINE
 
 from . import models
 
@@ -12,7 +13,23 @@ LabResult = models.LabResult
 PatientEMR = models.PatientEMR
 LabRequest = models.LabRequest
 
+custom_username_validator = RegexValidator(
+    regex=r'^[a-zA-Z0-9@.+_/-]*$',  # ← Added '/' to the regex
+    message='Enter a valid username. This value may contain only letters, numbers, and /@/./+/-/_ characters.',
+    code='invalid_username'
+)
 
+# Add this to hospital/models.py or forms.py
+from django.contrib.auth.models import User
+from django.contrib.auth.validators import UnicodeUsernameValidator
+
+# Create a custom validator
+class CustomUsernameValidator(UnicodeUsernameValidator):
+    regex = r'^[\w.@+/-]+\Z'
+    message = 'Enter a valid username. This value may contain only letters, numbers, and /@/./+/-/_ characters.'
+
+# Replace the default validator on the User model
+User._meta.get_field('username').validators = [CustomUsernameValidator()]
 # ------------------------------------------------------------------
 # ADMIN SIGNUP
 # ------------------------------------------------------------------
@@ -51,7 +68,19 @@ class PatientUserForm(forms.ModelForm):
         model = User
         fields = ['first_name', 'last_name', 'username', 'password']
         widgets = {'password': forms.PasswordInput()}
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Apply custom validator to username field
+        self.fields['username'].validators = [custom_username_validator]
+        # Optional: Add help text
+        self.fields['username'].help_text = 'Allowed characters: letters, numbers, @ . + - _ /'
 
+# hospital/forms.py
+
+# hospital/forms.py
+
+# hospital/forms.py
 
 class PatientForm(forms.ModelForm):
     profile_pic = CloudinaryFileField(

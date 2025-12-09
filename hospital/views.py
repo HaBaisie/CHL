@@ -99,35 +99,82 @@ def patient_signup_view(request):
     doctors = models.Doctor.objects.filter(status=True).select_related('user')
 
     if request.method == 'POST':
-        userForm = forms.PatientUserForm(request.POST)
+        # Create forms
         patientForm = forms.PatientForm(request.POST, request.FILES)
+        
+        # MANUALLY handle user creation to bypass validation
+        username = request.POST.get('username', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        password = request.POST.get('password', '')
+        
+        # Basic validation
+        errors = []
+        
+        if not username:
+            errors.append("Username is required")
+        elif len(username) > 150:
+            errors.append("Username must be 150 characters or fewer")
+        
+        if not password:
+            errors.append("Password is required")
+        
+        # Check if username already exists
+        from django.contrib.auth.models import User
+        if User.objects.filter(username=username).exists():
+            errors.append("Username already exists")
+        
+        # Check if patient form is valid
+        if not patientForm.is_valid():
+            for field, field_errors in patientForm.errors.items():
+                for error in field_errors:
+                    errors.append(f"{field}: {error}")
+        
+        if not errors and patientForm.is_valid():
+            try:
+                # Create user manually
+                user = User.objects.create_user(
+                    username=username,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=request.POST.get('email', '').strip()
+                )
+                print(f"✅ User created with username: {user.username}")
+                
+                # Save patient
+                patient = patientForm.save(commit=False)
+                patient.user = user
 
-        if userForm.is_valid() and patientForm.is_valid():
-            # Save user
-            user = userForm.save(commit=False)
-            user.set_password(userForm.cleaned_data['password'])
-            user.save()
+                # Get doctor User ID from dropdown
+                doctor_user_id = request.POST.get('assignedDoctorId')
+                if doctor_user_id and doctor_user_id.isdigit():
+                    patient.assignedDoctorId = int(doctor_user_id)
+                else:
+                    patient.assignedDoctorId = None
 
-            # Save patient
-            patient = patientForm.save(commit=False)
-            patient.user = user
+                patient.status = True
+                patient.save()
+                print(f"✅ Patient saved for user: {user.username}")
 
-            # Get doctor User ID from dropdown
-            doctor_user_id = request.POST.get('assignedDoctorId')
-            if doctor_user_id and doctor_user_id.isdigit():
-                patient.assignedDoctorId = int(doctor_user_id)
-            else:
-                patient.assignedDoctorId = None
+                # Add to group
+                group, _ = Group.objects.get_or_create(name='PATIENT')
+                group.user_set.add(user)
 
-            patient.status = True
-            patient.save()
-
-            # Add to group
-            group, _ = Group.objects.get_or_create(name='PATIENT')
-            group.user_set.add(user)
-
-            messages.success(request, "Patient registered successfully!")
-            return redirect('patientlogin')
+                messages.success(request, "Patient registered successfully!")
+                return redirect('patientlogin')
+                
+            except Exception as e:
+                errors.append(f"Error creating account: {str(e)}")
+        
+        # If there are errors
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            # Recreate forms with POST data to preserve input
+            userForm = forms.PatientUserForm(request.POST)
+        else:
+            userForm = forms.PatientUserForm()
 
     else:
         userForm = forms.PatientUserForm()
