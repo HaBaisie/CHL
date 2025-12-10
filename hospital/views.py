@@ -227,6 +227,7 @@ def admin_dashboard_view(request):
     patients = get_patient_queryset()
     if q:
         patients = patients.filter(
+            Q(user__username__icontains=q) |
             Q(user__first_name__icontains=q) |
             Q(user__last_name__icontains=q) |
             Q(mobile__icontains=q) |
@@ -353,6 +354,7 @@ def admin_view_patient_view(request):
     
     if q:
         patients = patients.filter(
+            Q(user__username__icontains=q) |
             Q(user__first_name__icontains=q) |
             Q(user__last_name__icontains=q) |
             Q(mobile__icontains=q) |
@@ -623,17 +625,46 @@ def doctor_patient_view(request):
 @user_passes_test(is_doctor)
 def doctor_view_patient_view(request):
     q = request.GET.get('q', '').strip()
-    patients = get_patient_queryset().filter(assignedDoctorId=request.user.id)
+    
+    patients = Patient.objects.filter(
+        status=True,
+        assignedDoctorId=request.user.id
+    ).select_related('user').order_by('-last_updated')
+    
+    print(f"🔍 Doctor {request.user.username} searching for: '{q}'")
+    print(f"📊 Total assigned patients: {patients.count()}")
     
     if q:
+        # Test each filter separately (for debugging)
+        username_count = patients.filter(user__username__icontains=q).count()
+        first_name_count = patients.filter(user__first_name__icontains=q).count()
+        last_name_count = patients.filter(user__last_name__icontains=q).count()
+        mobile_count = patients.filter(mobile__icontains=q).count()
+        symptoms_count = patients.filter(symptoms__icontains=q).count()  # ← FIXED!
+        
+        print(f"🔎 Breakdown:")
+        print(f"  - Username matches: {username_count}")
+        print(f"  - First name matches: {first_name_count}")
+        print(f"  - Last name matches: {last_name_count}")
+        print(f"  - Mobile matches: {mobile_count}")
+        print(f"  - Symptoms matches: {symptoms_count}")
+        
+        # Apply the combined filter (FIXED syntax)
         patients = patients.filter(
+            Q(user__username__icontains=q) |
             Q(user__first_name__icontains=q) |
             Q(user__last_name__icontains=q) |
             Q(mobile__icontains=q) |
-            Q(symptoms__icontains=q)
+            Q(symptoms__icontains=q)  # ← FIXED!
         )
+        
+        print(f"✅ Final results: {patients.count()}")
+        
+        # Show usernames of found patients
+        for p in patients:
+            print(f"   - {p.get_name()} (Username: {p.user.username})")
     
-    doctor = models.Doctor.objects.get(user_id=request.user.id)  # for profile picture of doctor in sidebar
+    doctor = models.Doctor.objects.get(user_id=request.user.id)
     return render(request, 'hospital/doctor_view_patient.html', {
         'patients': patients, 
         'doctor': doctor,
@@ -1117,6 +1148,7 @@ def lab_dashboard(request):
     # Apply search filter if query exists
     if q:
         patients = patients.filter(
+            Q(user__username__icontains=q) |
             Q(user__first_name__icontains=q) |
             Q(user__last_name__icontains=q) |
             Q(mobile__icontains=q) |
@@ -1233,10 +1265,30 @@ def nurse_signup_view(request):
 @login_required(login_url='nurse-login')
 @user_passes_test(lambda u: u.groups.filter(name='NURSE').exists())
 def nurse_dashboard(request):
-    patients = Patient.objects.filter(status=True)
+    # Get search query
+    q = request.GET.get('q', '').strip()
+    
+    print(f"🔍 Search query: '{q}'")  # Debug
+    
+    # Use get_patient_queryset() which already includes select_related('user')
+    patients = get_patient_queryset()
+    print(f"📊 Initial patient count: {patients.count()}")  # Debug
+    
+    # Apply search filter if query exists
+    if q:
+        patients = patients.filter(
+            Q(user__username__icontains=q) |
+            Q(user__first_name__icontains=q) |
+            Q(user__last_name__icontains=q) |
+            Q(mobile__icontains=q) |
+            Q(symptoms__icontains=q)
+        )
+        print(f"✅ Filtered patient count: {patients.count()}")  # Debug
+    
     context = {
         'patients': patients,
-        'nurse': models.Nurse.objects.get(user_id=request.user.id)
+        'nurse': models.Nurse.objects.get(user_id=request.user.id),
+        'q': q
     }
     return render(request, 'hospital/nurse_dashboard.html', context)
 @login_required(login_url='nurse-login')
@@ -1248,6 +1300,7 @@ def nurse_patient_list(request):
     if q:
         patients = patients.filter(
             Q(user__first_name__icontains=q) |
+            Q(user__username__icontains=q) |
             Q(user__last_name__icontains=q) |
             Q(mobile__icontains=q) |
             Q(symptoms__icontains=q)

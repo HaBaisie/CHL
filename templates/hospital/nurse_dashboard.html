@@ -28,7 +28,7 @@
         <input class="form-control form-control-sm me-2"
                type="search"
                name="q"
-               placeholder="Name, Mobile, Symptoms..."
+               placeholder="Username, Name, Mobile, Symptoms..."
                value="{{ q|default:'' }}"
                style="width: 230px;"
                autofocus>
@@ -50,7 +50,9 @@
           <thead class="table-light">
             <tr>
               <th>#</th>
-              <th>Patient</th>
+              <th>Profile</th>  <!-- ADD THIS COLUMN -->
+              <th>Registration No</th>
+              <th>Patient Name</th>
               <th>Mobile</th>
               <th>Symptoms</th>
               <th>Doctor</th>
@@ -62,12 +64,29 @@
             <tr>
               <td>{{ forloop.counter }}</td>
               <td>
+                <!-- PROFILE PICTURE -->
+                {% if p.profile_pic %}
+                  <img src="{{ p.profile_pic.url }}" 
+                       alt="{{ p.get_name }}" 
+                       class="rounded-circle" 
+                       style="width: 40px; height: 40px; object-fit: cover;">
+                {% else %}
+                  <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" 
+                       style="width: 40px; height: 40px;">
+                    <span class="text-white">{{ p.get_name|first|upper }}</span>
+                  </div>
+                {% endif %}
+              </td>
+              <td>
+                <code class="text-primary">{{ p.user.username }}</code>
+              </td>
+              <td>
                 <strong>{{ p.get_name }}</strong>
               </td>
               <td>
                 {{ p.mobile }}
               </td>
-              <td>{{ p.symptoms }}</td>
+              <td>{{ p.symptoms|truncatechars:50 }}</td>
               <td>
                 {% if p.assignedDoctorId %}
                   {{ p.assignedDoctorId|get_doctor_name }}
@@ -90,7 +109,7 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="6" class="text-center text-muted py-5">
+              <td colspan="8" class="text-center text-muted py-5"> <!-- UPDATE COLSPAN to 8 -->
                 {% if q %}
                   No patients match "<strong>{{ q }}</strong>"
                 {% else %}
@@ -108,6 +127,7 @@
     <div class="card-footer bg-light small text-muted">
       Showing {{ patients|length }} patient{{ patients|pluralize }}
       {% if q %} matching "<strong>{{ q }}</strong>"{% endif %}
+      • Search includes: username, name, mobile, symptoms
     </div>
   </div>
 </div>
