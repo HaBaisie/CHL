@@ -116,6 +116,7 @@ urlpatterns = [
     path('nurse-patient-list', views.nurse_patient_list, name='nurse-patient-list'),
     path('nurse-add-vitals/<int:patient_id>/', views.nurse_add_vitals, name='nurse-add-vitals'),
     path('nurse-view-vitals/<int:patient_id>/', views.nurse_view_vitals, name='nurse-view-vitals'),
+    path('lab/add-result/patient/<int:patient_id>/', views.lab_add_result_for_patient, name='lab-add-result-for-patient'),
     
     # Add vitals view to doctor's URLs
     path('doctor-view-patient-vitals/<int:patient_id>/', views.doctor_view_patient_vitals, name='doctor-view-patient-vitals'),

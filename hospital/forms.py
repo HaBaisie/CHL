@@ -260,6 +260,33 @@ class LabResultForm(forms.ModelForm):
             self.fields['test_name'].initial = lab_request.test_name
             self.fields['test_name'].widget.attrs['readonly'] = True
 
+class DirectLabResultForm(forms.ModelForm):
+    class Meta:
+        model = LabResult
+        fields = ['test_name', 'result_value', 'remarks']  # performed_by will be set in view
+        widgets = {
+            'test_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., CBC, Blood Sugar, Urinalysis',
+                'required': True
+            }),
+            'result_value': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., 120 mg/dL, Positive, 4.5 million/μL',
+                'required': True
+            }),
+            'remarks': forms.Textarea(attrs={
+                'rows': 3, 
+                'class': 'form-control',
+                'placeholder': 'Additional notes or observations (optional)'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make fields required
+        self.fields['test_name'].required = True
+        self.fields['result_value'].required = True
 
 class PatientEMRForm(forms.ModelForm):
     class Meta:

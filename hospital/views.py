@@ -1833,3 +1833,43 @@ def admin_lab_audit_view(request):
     }
     return render(request, 'hospital/admin_lab_audit.html', context)
 
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
+def lab_add_result_for_patient(request, patient_id):
+    """Add lab result directly for a patient (no existing request)"""
+    patient = get_object_or_404(Patient, pk=patient_id, status=True)
+    
+    if request.method == 'POST':
+        # Use DirectLabResultForm
+        form = forms.DirectLabResultForm(request.POST)
+        
+        if form.is_valid():
+            try:
+                # Save form but don't commit to database yet
+                result = form.save(commit=False)
+                
+                # Set required fields
+                result.patient = patient
+                result.performed_by = request.user
+                
+                # Save to database
+                result.save()
+                
+                # FIXED: Use without parentheses
+                messages.success(request, f"Lab result saved for {patient.get_name}")
+                return redirect('lab-dashboard')
+                
+            except Exception as e:
+                messages.error(request, f"Error saving result: {str(e)}")
+                print(f"Error: {str(e)}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        # GET request - create empty form
+        form = forms.DirectLabResultForm()
+    
+    return render(request, 'hospital/lab_add_resultn.html', {
+        'form': form,
+        'patient': patient,
+        'is_from_request': False,
+    })

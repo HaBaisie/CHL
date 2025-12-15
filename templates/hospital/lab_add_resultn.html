@@ -1,0 +1,125 @@
+{% extends 'hospital/lab_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-flask me-2"></i>
+                Add Lab Result for {{ patient.get_name }}
+            </h4>
+        </div>
+        
+        <div class="card-body">
+            <!-- Display messages/errors -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Patient Info -->
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading">
+                    <i class="fas fa-user-injured me-2"></i>
+                    Patient Information
+                </h5>
+                <p class="mb-0">
+                    <strong>Name:</strong> {{ patient.get_name }}<br>
+                    <strong>ID:</strong> {{ patient.id }}<br>
+                    <strong>Mobile:</strong> {{ patient.mobile }}<br>
+                    {% if patient.symptoms %}
+                        <strong>Symptoms:</strong> {{ patient.symptoms|truncatewords:10 }}
+                    {% endif %}
+                </p>
+            </div>
+            
+            <!-- Form -->
+            <form method="post">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Test Name *</label>
+                        {{ form.test_name }}
+                        {% if form.test_name.errors %}
+                            <div class="text-danger small">{{ form.test_name.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">e.g., CBC, Blood Sugar, Urinalysis</small>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label">Result Value *</label>
+                        {{ form.result_value }}
+                        {% if form.result_value.errors %}
+                            <div class="text-danger small">{{ form.result_value.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">e.g., 120 mg/dL, Positive, 4.5 million/μL</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Remarks / Notes (Optional)</label>
+                    {{ form.remarks }}
+                    {% if form.remarks.errors %}
+                        <div class="text-danger small">{{ form.remarks.errors }}</div>
+                    {% endif %}
+                    <small class="text-muted">Any additional observations or comments</small>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'lab-dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save Lab Result
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-focus the test name field
+        const testNameField = document.getElementById('id_test_name');
+        if (testNameField) {
+            testNameField.focus();
+        }
+        
+        // Form validation
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(e) {
+            const testName = document.getElementById('id_test_name').value.trim();
+            const resultValue = document.getElementById('id_result_value').value.trim();
+            
+            if (!testName) {
+                e.preventDefault();
+                alert('Please enter a test name');
+                document.getElementById('id_test_name').focus();
+                return false;
+            }
+            
+            if (!resultValue) {
+                e.preventDefault();
+                alert('Please enter a result value');
+                document.getElementById('id_result_value').focus();
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}
