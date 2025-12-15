@@ -280,20 +280,53 @@ def delete_doctor_from_hospital_view(request,pk):
 def update_doctor_view(request,pk):
     doctor=models.Doctor.objects.get(id=pk)
     user=models.User.objects.get(id=doctor.user_id)
-    userForm=forms.DoctorUserForm(instance=user)
-    doctorForm=forms.DoctorForm(request.POST,instance=doctor)
-    mydict={'userForm':userForm,'doctorForm':doctorForm}
+    
+    # DEBUG: Print current doctor info
+    print(f"Current doctor profile_pic: {doctor.profile_pic}")
+    
     if request.method=='POST':
-        userForm=forms.DoctorUserForm(request.POST,instance=user)
-        doctorForm=forms.DoctorForm(request.POST,request.POST,instance=doctor)
+        # FIX: Use request.POST for userForm, request.POST AND request.FILES for doctorForm
+        userForm=forms.DoctorUserForm(request.POST, instance=user)
+        doctorForm=forms.DoctorForm(request.POST, request.FILES, instance=doctor)  # ← FIXED HERE
+        
+        # DEBUG: Check if file is in request
+        if 'profile_pic' in request.FILES:
+            print(f"File uploaded: {request.FILES['profile_pic'].name}")
+        
         if userForm.is_valid() and doctorForm.is_valid():
             user=userForm.save()
-            user.set_password(user.password)
+            
+            # Only set password if it was provided
+            if userForm.cleaned_data.get('password'):
+                user.set_password(user.password)
             user.save()
+            
             doctor=doctorForm.save(commit=False)
             doctor.status=True
             doctor.save()
+            
+            # DEBUG: Check saved value
+            print(f"Saved doctor profile_pic: {doctor.profile_pic}")
+            
+            messages.success(request, "Doctor updated successfully!")
             return redirect('admin-view-doctor')
+        else:
+            # Show form errors for debugging
+            messages.error(request, f"User form errors: {dict(userForm.errors)}")
+            messages.error(request, f"Doctor form errors: {dict(doctorForm.errors)}")
+            
+    # GET request - load existing data
+    userForm=forms.DoctorUserForm(instance=user)
+    doctorForm=forms.DoctorForm(instance=doctor)
+    
+    # DEBUG: Check what's being passed to template
+    print(f"Doctor form profile_pic field value: {doctorForm['profile_pic'].value()}")
+    
+    mydict={
+        'userForm':userForm,
+        'doctorForm':doctorForm,
+        'doctor': doctor  # Pass doctor object to template
+    }
     return render(request,'hospital/admin_update_doctor.html',context=mydict)
 @login_required(login_url='adminlogin')
 @user_passes_test(is_admin)
