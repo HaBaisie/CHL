@@ -24,6 +24,8 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'  # Render sets DEBUG=False au
 
 ALLOWED_HOSTS = [
     'chl-4rj7.onrender.com',
+    'www.chlhealthcare.online',
+    'chlhealthcare.online',
     'localhost',
     '127.0.0.1',
 ]
