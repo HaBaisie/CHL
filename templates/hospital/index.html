@@ -1,112 +1,575 @@
-{% extends 'hospital/homebase.html' %}
-{% load static %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <style media="screen">
-    .jumbotron {
-      margin-top: 0px;
-      margin-bottom: 0px;
-      background-image: url('{% static "images/back.jpg" %}');
-      background-size: cover;
-      background-repeat: no-repeat;
-    }
-    .jumbotron h5,
-    h3 {
-      text-align: center;
-    }
-    .alert {
-      margin: 0px;
-    }
-    .glow {
-      font-size: 50px;
-      color: white;
-      text-align: center;
-      -webkit-animation: glow 1s ease-in-out infinite alternate;
-      -moz-animation: glow 1s ease-in-out infinite alternate;
-      animation: glow 1s ease-in-out infinite alternate;
-    }
-    @-webkit-keyframes glow {
-      from {
-        text-shadow: 0 0 10px #eeeeee, 0 0 20px #000000, 0 0 30px #000000, 0 0 40px #000000, 0 0 50px #9554b3, 0 0 60px #9554b3, 0 0 70px #9554b3;
-      }
-      to {
-        text-shadow: 0 0 20px #eeeeee, 0 0 30px #fa2d2d, 0 0 40px #fa2d2d, 0 0 50px #fa2d2d, 0 0 60px #fa2d2d, 0 0 70px #fa2d2d, 0 0 80px #fa2d2d;
-      }
-    }
-    /* New style for the logo */
-    .logo-img {
-      display: block;
-      margin: 20px auto;
-      width: 120px;          /* adjust size as you like */
-      height: auto;
-      border-radius: 50%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHL Health Care Services - Lamodi, Offa, Kwara State</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #0d6efd;
+            --primary-green: #198754;
+            --primary-red: #dc3545;
+            --primary-teal: #20c997;
+            --dark-blue: #0a58ca;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+        
+        .nav-link {
+            font-weight: 500;
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(rgba(13, 110, 253, 0.85), rgba(13, 110, 253, 0.9)), url('https://images.unsplash.com/photo-1586773860418-dc22f8b874bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 100px 0;
+            text-align: center;
+        }
+        
+        .hero-section h1 {
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .hero-section p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 30px;
+        }
+        
+        /* Section Styling */
+        .section-padding {
+            padding: 80px 0;
+        }
+        
+        .section-title {
+            position: relative;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 4px;
+            background-color: var(--primary-teal);
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        /* Services Cards */
+        .service-card {
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            height: 100%;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .service-icon {
+            width: 70px;
+            height: 70px;
+            background-color: rgba(13, 110, 253, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 30px;
+            color: var(--primary-blue);
+        }
+        
+        /* About Section */
+        .about-img {
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .feature-list li {
+            margin-bottom: 15px;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .feature-list li:before {
+            content: '\f058';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--primary-teal);
+            position: absolute;
+            left: 0;
+        }
+        
+        /* EMR Section */
+        .emr-section {
+            background-color: #f8f9fa;
+        }
+        
+        .emr-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .emr-card:hover {
+            transform: scale(1.02);
+        }
+        
+        .emr-btn {
+            background-color: var(--primary-red);
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .emr-btn:hover {
+            background-color: #c82333;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.2);
+        }
+        
+        /* Footer */
+        .footer {
+            background-color: #212529;
+            color: white;
+            padding: 60px 0 30px;
+        }
+        
+        .footer-links h5 {
+            margin-bottom: 25px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .footer-links h5:after {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 3px;
+            background-color: var(--primary-teal);
+            bottom: 0;
+            left: 0;
+        }
+        
+        .footer-links ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .footer-links ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-links ul li a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .footer-links ul li a:hover {
+            color: white;
+            padding-left: 5px;
+        }
+        
+        .copyright {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            margin-top: 40px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 70px 0;
+            }
+            
+            .section-padding {
+                padding: 50px 0;
+            }
+        }
+    </style>
 </head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand text-primary" href="#">
+                <i class="fas fa-hospital me-2"></i>CHL Health Care
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#services">Services</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About Us</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#emr">EMR System</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-primary ms-lg-3 mt-2 mt-lg-0" href="{% url 'emr' %}" target="_blank">EMR Login</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-<br><br>
-<div class="jumbotron" style="margin-bottom:0;margin-top:0;">
-  <br>
-  <h5 class="display-3 glow">CHL HOSPITAL</h5>
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="display-4 fw-bold">CHL Health Care Services</h1>
+                    <p class="lead">Providing exceptional healthcare services to the Lamodi community in Offa, Kwara State since 2010. We are committed to delivering compassionate, comprehensive medical care for you and your family.</p>
+                    <div class="mt-4">
+                        <a href="#services" class="btn btn-light btn-lg me-2">Our Services</a>
+                        <a href="#contact" class="btn btn-outline-light btn-lg">Contact Us</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <!-- ==== NEW LOGO ==== -->
-  <img src="https://media.licdn.com/dms/image/v2/D4E0BAQEMvW03FLNo1A/company-logo_200_200/B4EZi4SXvOGUAI-/0/1755438480742?e=2147483647&v=beta&t=-s_HbIV9BGuHl7wWEQCD2d1o_SYaE390G00yww5MW94"
-       alt="CHL Hospital Logo"
-       class="logo-img">
-  <!-- =================== -->
+    <!-- Services Section -->
+    <section id="services" class="section-padding">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h2 class="section-title">Our Medical Services</h2>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-card card h-100">
+                        <div class="card-body p-4 text-center">
+                            <div class="service-icon">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <h4 class="card-title mb-3">General Consultation</h4>
+                            <p class="card-text">Comprehensive medical consultations by experienced physicians for all age groups, from infants to seniors.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Adult & Pediatric Care</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Chronic Disease Management</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Preventive Health Checkups</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-card card h-100">
+                        <div class="card-body p-4 text-center">
+                            <div class="service-icon">
+                                <i class="fas fa-procedures"></i>
+                            </div>
+                            <h4 class="card-title mb-3">Emergency Care</h4>
+                            <p class="card-text">24/7 emergency services with a fully equipped emergency department and ambulance services.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>24/7 Emergency Department</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Ambulance Services</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Trauma & Critical Care</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-card card h-100">
+                        <div class="card-body p-4 text-center">
+                            <div class="service-icon">
+                                <i class="fas fa-microscope"></i>
+                            </div>
+                            <h4 class="card-title mb-3">Laboratory Services</h4>
+                            <p class="card-text">State-of-the-art diagnostic laboratory with advanced equipment for accurate and timely test results.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Blood Tests & Pathology</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Microbiology & Biochemistry</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Rapid Diagnostic Tests</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-card card h-100">
+                        <div class="card-body p-4 text-center">
+                            <div class="service-icon">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <h4 class="card-title mb-3">Pharmacy Services</h4>
+                            <p class="card-text">Well-stocked pharmacy with genuine medications, prescription services, and medication counseling.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Prescription Dispensing</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Generic & Brand Medicines</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Medication Counseling</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-card card h-100">
+                        <div class="card-body p-4 text-center">
+                            <div class="service-icon">
+                                <i class="fas fa-baby"></i>
+                            </div>
+                            <h4 class="card-title mb-3">Maternal & Child Health</h4>
+                            <p class="card-text">Comprehensive care for mothers and children including antenatal care, delivery, and pediatric services.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Antenatal & Postnatal Care</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Child Immunization</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Family Planning Services</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-card card h-100">
+                        <div class="card-body p-4 text-center">
+                            <div class="service-icon">
+                                <i class="fas fa-x-ray"></i>
+                            </div>
+                            <h4 class="card-title mb-3">Diagnostic Imaging</h4>
+                            <p class="card-text">Advanced imaging services including X-ray, ultrasound, and ECG for accurate diagnosis and treatment.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Digital X-ray</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Ultrasound Scanning</li>
+                                <li><i class="fas fa-check text-success me-2"></i>ECG & Echocardiography</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <br><br><br><br><br>
-  <p>
-    <h3>Emergency ?</h3>
-    <p class="lead">
-      <a class="btn btn-danger btn-lg" href="/patientclick" role="button">Take Appointment Now!</a>
-    </p>
-  </p>
-  <br><br>
-</div>
+    <!-- About Us Section -->
+    <section id="about" class="section-padding bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h2 class="section-title">About CHL Health Care Services</h2>
+                </div>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-lg-6 mb-4 mb-lg-0">
+                    <img src="https://media.licdn.com/dms/image/v2/D4D22AQGixPRWOsgbAg/feedshare-shrink_2048_1536/B4DZnt3EZxJIAw-/0/1760632260841?e=2147483647&v=beta&t=r-XT7yZRgetMgg58eB_gIZxibvpCQW-26qlIoDyXUA8" alt="CHL Health Care Facility" class="img-fluid about-img">
+                </div>
+                <div class="col-lg-6">
+                    <h3 class="mb-4">Serving Lamodi Community Since 2010</h3>
+                    <p>CHL Health Care Services is a premier healthcare facility located in the heart of Lamodi, Offa, Kwara State. Established in 2010, we have been at the forefront of providing quality, accessible, and affordable healthcare to the local community and surrounding areas.</p>
+                    
+                    <p>Our mission is to deliver comprehensive healthcare services with compassion, respect, and excellence. We believe in treating the whole person, not just the illness, and we're committed to improving the health and wellbeing of every patient we serve.</p>
+                    
+                    <h5 class="mt-4 mb-3">Our Core Values:</h5>
+                    <ul class="feature-list">
+                        <li><strong>Patient-Centered Care:</strong> We prioritize the needs and preferences of our patients in all decisions.</li>
+                        <li><strong>Medical Excellence:</strong> Our team of healthcare professionals maintains the highest standards of medical practice.</li>
+                        <li><strong>Community Focus:</strong> We are deeply committed to serving the Lamodi community and improving public health.</li>
+                        <li><strong>Innovation:</strong> We continuously adopt new technologies and methods to enhance patient care.</li>
+                        <li><strong>Accessibility:</strong> We strive to make quality healthcare accessible and affordable for all.</li>
+                    </ul>
+                    
+                    <div class="mt-4">
+                        <a href="#contact" class="btn btn-primary">Contact Us Today</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<br><br><br><br>
-<div class="container">
-  <div class="row">
-    {% include "hospital/admin_doctor_patient_card.html" %}
-    <div class="col-md-4">
-      <a href="{% url 'pharmacy-signup' %}" class="btn btn-info btn-block">Pharmacy Sign-Up</a>
-    </div>
-    <div class="col-md-4">
-      <a href="{% url 'lab-signup' %}" class="btn btn-info btn-block">Lab Technician Sign-Up</a>
-    </div>
-    <div class="col-md-4">
-      <a href="{% url 'nurse-signup' %}" class="btn btn-info btn-block">Nurse Sign-Up</a>
-    </div>
-  </div>
+    <!-- EMR Section -->
+    <section id="emr" class="section-padding emr-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h2 class="section-title">Electronic Medical Records System</h2>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="emr-card">
+                        <div class="mb-4">
+                            <i class="fas fa-laptop-medical fa-4x text-primary mb-3"></i>
+                            <h3>CHL Hospital EMR Portal</h3>
+                            <p class="lead">Access our secure Electronic Medical Records system for healthcare professionals and staff.</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p>Our state-of-the-art EMR system allows for seamless management of patient records, appointments, prescriptions, and billing. Authorized medical staff can access patient information securely from anywhere within our facility.</p>
+                            
+                            <div class="row mt-5">
+                                <div class="col-md-6 mb-3">
+                                    <div class="p-3 border rounded bg-white">
+                                        <h5>For Medical Staff</h5>
+                                        <p class="small">Doctors, nurses, and technicians can access patient records, update treatment plans, and view test results.</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="p-3 border rounded bg-white">
+                                        <h5>For Administrative Staff</h5>
+                                        <p class="small">Administrative personnel can manage appointments, billing, and inventory through the system.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="{% url 'emr' %}" class="emr-btn"></a>
+                                <i class="fas fa-sign-in-alt me-2"></i> Access EMR System
+                            </a>
+                            <p class="text-muted mt-3 small">Note: EMR access is restricted to authorized CHL Health Care personnel only.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <br>
-  <div class="row">
-    <div class="col-md-4">
-      <a href="{% url 'pharmacy-login' %}" class="btn btn-primary btn-block">Pharmacy Login</a>
-    </div>
-    <div class="col-md-4">
-      <a href="{% url 'lab-login' %}" class="btn btn-primary btn-block">Lab Technician Login</a>
-    </div>
-    <div class="col-md-4">
-      <a href="{% url 'nurse-login' %}" class="btn btn-primary btn-block">Nurse Login</a>
-    </div>
-  </div>
+    <!-- Contact & Footer -->
+    <footer id="contact" class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
+                    <div class="footer-links">
+                        <h5>CHL Health Care Services</h5>
+                        <p>Providing quality healthcare to the Lamodi community and surrounding areas in Offa, Kwara State.</p>
+                        <div class="mt-4">
+                            <a href="#" class="text-white me-3"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#" class="text-white me-3"><i class="fab fa-twitter"></i></a>
+                            <a href="#" class="text-white me-3"><i class="fab fa-instagram"></i></a>
+                            <a href="#" class="text-white"><i class="fab fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
+                    <div class="footer-links">
+                        <h5>Quick Links</h5>
+                        <ul>
+                            <li><a href="#home">Home</a></li>
+                            <li><a href="#services">Our Services</a></li>
+                            <li><a href="#about">About Us</a></li>
+                            <li><a href="#emr">EMR System</a></li>
+                            <li><a href="emr.html" target="_blank">EMR Login</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-12">
+                    <div class="footer-links">
+                        <h5>Contact Information</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-3">
+                                <i class="fas fa-map-marker-alt me-2"></i>
+                                Lamodi Area, Offa<br>
+                                <span class="ms-4">Kwara State, Nigeria</span>
+                            </li>
+                            <li class="mb-3">
+                                <i class="fas fa-phone me-2"></i>
+                                +234 803 123 4567
+                            </li>
+                            <li class="mb-3">
+                                <i class="fas fa-envelope me-2"></i>
+                                info@chlhealthcare-offa.com
+                            </li>
+                            <li>
+                                <i class="fas fa-clock me-2"></i>
+                                24/7 Emergency Services Available
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="copyright">
+                        <p>&copy; 2023 CHL Health Care Services, Lamodi, Offa, Kwara State. All Rights Reserved.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-  <br>
-  <!-- Account Department Row -->
-  <div class="row">
-    <div class="col-12 text-center mb-3">
-      <h4>Account Department</h4>
-    </div>
-    <div class="col-md-6">
-      <a href="{% url 'account-signup' %}" class="btn btn-success btn-block">Account Department Sign-Up</a>
-    </div>
-    <div class="col-md-6">
-      <a href="{% url 'account-login' %}" class="btn btn-success btn-block">Account Department Login</a>
-    </div>
-  </div>
-</div>
-<br><br><br>
-{% endblock content %}
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Smooth Scroll Script -->
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if(targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if(targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 70,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Navbar background on scroll
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 100) {
+                navbar.classList.add('navbar-scrolled');
+            } else {
+                navbar.classList.remove('navbar-scrolled');
+            }
+        });
+    </script>
+</body>
+</html>

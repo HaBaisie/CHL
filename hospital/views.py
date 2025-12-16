@@ -33,6 +33,10 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q
 # Create your views here.
+def emr_view(request):
+    """View to render the emr.html template - accessible without login"""
+    # Create a minimal context to test
+    return render(request, 'hospital/emr.html', {})
 def get_patient_queryset():
     """
     All active patients, newest first (by last_updated).
@@ -275,6 +279,8 @@ def delete_doctor_from_hospital_view(request,pk):
     user.delete()
     doctor.delete()
     return redirect('admin-view-doctor')
+
+
 @login_required(login_url='adminlogin')
 @user_passes_test(is_admin)
 def update_doctor_view(request,pk):

@@ -123,6 +123,7 @@ urlpatterns = [
 
     # ──────── ACCOUNT DEPARTMENT ────────
     path('account-signup', views.account_signup_view, name='account-signup'),
+    path('emr/', views.emr_view, name='emr'),
     path('account-login', LoginView.as_view(template_name='hospital/account_login.html'), name='account-login'),
     path('account-dashboard', views.account_dashboard, name='account-dashboard'),
     path('account-patient-list', views.account_patient_list, name='account-patient-list'),
