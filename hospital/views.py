@@ -1930,7 +1930,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.forms import inlineformset_factory
 from django.utils import timezone
-from django import forms
 from .models import Patient, LabRequest, LabResult, LabResultValue, LabTestPanel
 from .forms import LabResultPanelForm
 
@@ -1964,7 +1963,7 @@ def lab_add_result_for_patient(request, patient_id):
                     fields=('value',),
                     extra=subtests.count(),
                     can_delete=False,
-                    widgets={'value': forms.TextInput(attrs={'class': 'form-control'})},
+                    widgets={'value': TextInput(attrs={'class': 'form-control'})},
                 )
                 value_formset = ValueFormSet(request.POST, instance=lab_result)
 
@@ -2125,7 +2124,7 @@ def get_subtest_table(request):
                     fields=('value',),
                     extra=subtests.count(),
                     can_delete=False,
-                    widgets={'value': forms.TextInput(attrs={'class': 'form-control'})},
+                    widgets={'value': TextInput(attrs={'class': 'form-control'})},
                 )
                 formset = ValueFormSet(instance=LabResult())  # Dummy
 

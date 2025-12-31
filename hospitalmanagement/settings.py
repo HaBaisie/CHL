@@ -20,7 +20,7 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 # Security
 # ------------------------------------------------------------------
 SECRET_KEY = os.environ.get('SECRET_KEY', 'hpbv()ep00boce&o0w7z1h)st148(*m@6@-rk$nn)(n9ojj4c0')
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'  # Render sets DEBUG=False automatically
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'  # Render sets DEBUG=False automatically
 
 ALLOWED_HOSTS = [
     'chl-4rj7.onrender.com',
