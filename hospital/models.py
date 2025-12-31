@@ -158,32 +158,6 @@ class PharmacyReceipt(models.Model):
 
 
 # -------------------------------------------------
-# 4. LAB TEST CATALOGUE
-# -------------------------------------------------
-class LabTest(models.Model):
-    code = models.CharField(max_length=20, unique=True)      # e.g. CBC, LFT
-    name = models.CharField(max_length=150)
-    normal_range = models.CharField(max_length=200, blank=True)
-
-    def __str__(self):
-        return f"{self.code} – {self.name}"
-
-# -------------------------------------------------
-# 5. LAB RESULT (one per test per patient)
-# -------------------------------------------------
-class LabResult(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    test_name = models.CharField(max_length=150)  # NEW: Free text
-    result_value = models.CharField(max_length=200)
-    remarks = models.TextField(blank=True)
-    performed_at = models.DateTimeField(auto_now_add=True)
-    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-
-    def __str__(self):
-        return f"{self.test_name} – {self.patient.get_name}"
-    
-
-# -------------------------------------------------
 # PHARMACY PROFILE MODEL
 # -------------------------------------------------
 class Pharmacy(models.Model):
@@ -337,21 +311,6 @@ class BillItem(models.Model):
     def __str__(self):
         return f"{self.item_type}: {self.description}"
     
-# ──────────────────────────────────────────────────────────────
-#  LAB REQUEST (Doctor orders a test)
-# ──────────────────────────────────────────────────────────────
-class LabRequest(models.Model):
-    emr = models.ForeignKey(PatientEMR, on_delete=models.CASCADE, related_name='lab_requests')
-    test_name = models.CharField(max_length=200)      # e.g. "Full Blood Count"
-    ordered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='ordered_tests')
-    ordered_at = models.DateTimeField(auto_now_add=True)
-    is_completed = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"{self.test_name} for {self.emr.patient.get_name}"
-    
-
-    # Add this at the END of hospital/models.py
 from django.contrib.auth.models import User
 from django.contrib.auth.validators import UnicodeUsernameValidator
 
@@ -361,3 +320,69 @@ class CustomUsernameValidator(UnicodeUsernameValidator):
 
 # Replace the default validator on the User model
 User._meta.get_field('username').validators = [CustomUsernameValidator()]
+
+# ──────────────────────────────────────────────────────────────
+# MODERN LAB SYSTEM – GROUPED PANELS + SUB-TESTS (KEEP THIS)
+# ──────────────────────────────────────────────────────────────
+
+class LabTestPanel(models.Model):
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=50, blank=True, unique=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+
+class LabSubTest(models.Model):
+    panel = models.ForeignKey(LabTestPanel, on_delete=models.CASCADE, related_name='subtests')
+    name = models.CharField(max_length=200)
+    short_name = models.CharField(max_length=50, blank=True)
+    unit = models.CharField(max_length=50)
+    reference_range = models.CharField(max_length=200)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.unit})"
+
+
+class LabResult(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='lab_results')
+    panel = models.ForeignKey(LabTestPanel, on_delete=models.PROTECT, null=True, blank=True)  # ← add null=True, blank=True
+    performed_at = models.DateTimeField(auto_now_add=True)
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    date_performed = models.DateField()                   # important for display
+    overall_comment = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.panel.name} – {self.patient.get_name}"
+
+
+class LabResultValue(models.Model):
+    result = models.ForeignKey(LabResult, on_delete=models.CASCADE, related_name='values')
+    subtest = models.ForeignKey(LabSubTest, on_delete=models.PROTECT)
+    value = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.subtest.name}: {self.value} {self.subtest.unit}"
+
+
+# ──────────────────────────────────────────────────────────────
+# LAB REQUEST – Optional improvement
+# ──────────────────────────────────────────────────────────────
+class LabRequest(models.Model):
+    emr = models.ForeignKey(PatientEMR, on_delete=models.CASCADE, related_name='lab_requests')
+    panel = models.ForeignKey(LabTestPanel, on_delete=models.PROTECT, null=True, blank=True)  # ← preferred
+    test_name = models.CharField(max_length=200, blank=True)  # fallback for rare tests
+    ordered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    ordered_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        if self.panel:
+            return f"{self.panel.name} request"
+        return f"{self.test_name} request"

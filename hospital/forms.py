@@ -244,50 +244,402 @@ class LabRequestForm(forms.ModelForm):
 
 LabRequestFormSet = inlineformset_factory(PatientEMR, LabRequest, form=LabRequestForm, extra=2, can_delete=True)
 
-class LabResultForm(forms.ModelForm):
+# forms.py (replace the old LabResultForm with this)
+
+from django import forms
+from django.forms import inlineformset_factory
+from .models import LabResult, LabResultValue, LabTestPanel
+
+
+class LabResultPanelForm(forms.ModelForm):
+    """
+    Form for selecting the lab panel and adding overall info/comment
+    Used when lab technician performs a panel test
+    """
     class Meta:
         model = LabResult
-        fields = ['test_name', 'result_value', 'remarks']
+        fields = ['panel', 'date_performed', 'overall_comment']
         widgets = {
-            'test_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'result_value': forms.TextInput(attrs={'class': 'form-control'}),
-            'remarks': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'panel': forms.Select(attrs={'class': 'form-control'}),
+            'date_performed': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'overall_comment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
 
     def __init__(self, *args, lab_request=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if lab_request:
-            self.fields['test_name'].initial = lab_request.test_name
-            self.fields['test_name'].widget.attrs['readonly'] = True
+        # Optional: pre-select panel if coming from a LabRequest
+        if lab_request and lab_request.panel:
+            self.fields['panel'].initial = lab_request.panel
+            self.fields['panel'].widget.attrs['readonly'] = True  # optional
 
-class DirectLabResultForm(forms.ModelForm):
+
+# Inline formset for entering values of each sub-test
+# This will be used after selecting a panel
+LabResultValueFormSet = inlineformset_factory(
+    parent_model=LabResult,
+    model=LabResultValue,
+    fields=('value',),
+    extra=0,                  # We will populate dynamically based on panel
+    can_delete=False,         # Usually no need to delete sub-tests
+    widgets={
+        'value': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter result value'}),
+    }
+)
+# hospital/forms.py
+from django import forms
+from django.contrib.auth.models import User
+from django.forms import inlineformset_factory
+from cloudinary.forms import CloudinaryFileField 
+from django.core.validators import RegexValidator # ← THIS IS THE KEY LINE
+
+from . import models
+
+# Import models to avoid circular imports
+DispensedDrug = models.DispensedDrug
+LabResult = models.LabResult
+PatientEMR = models.PatientEMR
+LabRequest = models.LabRequest
+
+custom_username_validator = RegexValidator(
+    regex=r'^[a-zA-Z0-9@.+_/-]*$',  # ← Added '/' to the regex
+    message='Enter a valid username. This value may contain only letters, numbers, and /@/./+/-/_ characters.',
+    code='invalid_username'
+)
+
+# Add this to hospital/models.py or forms.py
+from django.contrib.auth.models import User
+from django.contrib.auth.validators import UnicodeUsernameValidator
+
+# Create a custom validator
+class CustomUsernameValidator(UnicodeUsernameValidator):
+    regex = r'^[\w.@+/-]+\Z'
+    message = 'Enter a valid username. This value may contain only letters, numbers, and /@/./+/-/_ characters.'
+
+# Replace the default validator on the User model
+User._meta.get_field('username').validators = [CustomUsernameValidator()]
+# ------------------------------------------------------------------
+# ADMIN SIGNUP
+# ------------------------------------------------------------------
+class AdminSigupForm(forms.ModelForm):
     class Meta:
-        model = LabResult
-        fields = ['test_name', 'result_value', 'remarks']  # performed_by will be set in view
-        widgets = {
-            'test_name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., CBC, Blood Sugar, Urinalysis',
-                'required': True
-            }),
-            'result_value': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., 120 mg/dL, Positive, 4.5 million/μL',
-                'required': True
-            }),
-            'remarks': forms.Textarea(attrs={
-                'rows': 3, 
-                'class': 'form-control',
-                'placeholder': 'Additional notes or observations (optional)'
-            }),
-        }
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'password']
+        widgets = {'password': forms.PasswordInput()}
+
+
+# ------------------------------------------------------------------
+# DOCTOR FORMS
+# ------------------------------------------------------------------
+class DoctorUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'password']
+        widgets = {'password': forms.PasswordInput()}
+
+class DoctorForm(forms.ModelForm):
+    profile_pic = CloudinaryFileField(
+        required=False,
+        options={'folder': 'profile_pic/DoctorProfilePic', 'crop': 'thumb', 'width': 200, 'height': 200}
+    )
+
+    class Meta:
+        model = models.Doctor
+        fields = ['address', 'mobile', 'department', 'status', 'profile_pic']
+
+
+# ------------------------------------------------------------------
+# PATIENT FORMS
+# ------------------------------------------------------------------
+class PatientUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'password']
+        widgets = {'password': forms.PasswordInput()}
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Make fields required
-        self.fields['test_name'].required = True
-        self.fields['result_value'].required = True
+        # Apply custom validator to username field
+        self.fields['username'].validators = [custom_username_validator]
+        # Optional: Add help text
+        self.fields['username'].help_text = 'Allowed characters: letters, numbers, @ . + - _ /'
 
+# hospital/forms.py
+
+# hospital/forms.py
+
+# hospital/forms.py
+
+class PatientForm(forms.ModelForm):
+    profile_pic = CloudinaryFileField(
+        required=False,
+        options={'folder': 'profile_pic/PatientProfilePic', 'crop': 'thumb', 'width': 200, 'height': 200}
+    )
+
+    class Meta:
+        model = models.Patient
+        fields = ['address', 'mobile', 'symptoms', 'assignedDoctorId', 'profile_pic']
+        widgets = {
+            'address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter full address'}),
+            'mobile': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 08123456789'}),
+            'symptoms': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Fever, Headache'}),
+            # DO NOT override assignedDoctorId here → we handle it in template
+        }
+# ------------------------------------------------------------------
+# APPOINTMENT FORMS
+# ------------------------------------------------------------------
+class AppointmentForm(forms.ModelForm):
+    doctorId = forms.ModelChoiceField(
+        queryset=models.Doctor.objects.filter(status=True),
+        empty_label="Select Doctor", to_field_name="user_id"
+    )
+    patientId = forms.ModelChoiceField(
+        queryset=models.Patient.objects.filter(status=True),
+        empty_label="Select Patient", to_field_name="user_id"
+    )
+
+    class Meta:
+        model = models.Appointment
+        fields = ['description', 'status']
+
+
+class PatientAppointmentForm(forms.ModelForm):
+    doctorId = forms.ModelChoiceField(
+        queryset=models.Doctor.objects.filter(status=True),
+        empty_label="Select Doctor", to_field_name="user_id"
+    )
+
+    class Meta:
+        model = models.Appointment
+        fields = ['description', 'status']
+
+
+# ------------------------------------------------------------------
+# CONTACT FORM
+# ------------------------------------------------------------------
+class ContactusForm(forms.Form):
+    Name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    Email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    Message = forms.CharField(max_length=500, widget=forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}))
+
+
+# ------------------------------------------------------------------
+# PHARMACY FORMS
+# ------------------------------------------------------------------
+class DispenseDrugForm(forms.ModelForm):
+    class Meta:
+        model = DispensedDrug
+        fields = ['drug_name', 'quantity', 'price_per_unit']
+        widgets = {
+            'drug_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Amoxicillin 500mg'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'price_per_unit': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': 0}),
+        }
+
+DispenseDrugFormSet = inlineformset_factory(
+    models.PatientEMR, DispensedDrug,
+    form=DispenseDrugForm,
+    fields=('drug_name', 'quantity', 'price_per_unit'),
+    extra=3, can_delete=True
+)
+
+
+# ------------------------------------------------------------------
+# PHARMACY, LAB, NURSE, ACCOUNT SIGNUP FORMS
+# ------------------------------------------------------------------
+class PharmacyUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'password']
+        widgets = {'password': forms.PasswordInput()}
+
+class PharmacyForm(forms.ModelForm):
+    profile_pic = CloudinaryFileField(required=False, options={'folder': 'profile_pic/PharmacyProfilePic'})
+    class Meta:
+        model = models.Pharmacy
+        fields = ['address', 'mobile', 'profile_pic']
+
+
+class LabUserForm(PharmacyUserForm): pass
+class LabForm(forms.ModelForm):
+    profile_pic = CloudinaryFileField(required=False, options={'folder': 'profile_pic/LabProfilePic'})
+    class Meta:
+        model =models.Lab
+        fields = ['address', 'mobile', 'profile_pic']
+
+
+class NurseUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'password']
+        widgets = {'password': forms.PasswordInput()}
+
+class NurseForm(forms.ModelForm):
+    profile_pic = CloudinaryFileField(required=False, options={'folder': 'profile_pic/NurseProfilePic'})
+    class Meta:
+        model = models.Nurse
+        fields = ['address', 'mobile', 'department', 'status', 'profile_pic']
+
+
+class AccountUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'password']
+        widgets = {'password': forms.PasswordInput()}
+
+class AccountForm(forms.ModelForm):
+    profile_pic = CloudinaryFileField(required=False, options={'folder': 'profile_pic/AccountProfilePic'})
+    class Meta:
+        model = models.Account
+        fields = ['address', 'mobile', 'profile_pic']
+
+
+# ------------------------------------------------------------------
+# BILLING & DISCHARGE
+# ------------------------------------------------------------------
+class BillForm(forms.ModelForm):
+    class Meta:
+        model = models.Bill
+        fields = ['status', 'discount', 'payment_method', 'insurance_details', 'remarks']
+
+class BillItemForm(forms.ModelForm):
+    class Meta:
+        model = models.BillItem
+        fields = ['item_type', 'description', 'quantity', 'unit_price']
+
+BillItemFormSet = inlineformset_factory(
+    models.Bill, models.BillItem,
+    form=BillItemForm,
+    fields=('item_type', 'description', 'quantity', 'unit_price'),
+    extra=3, can_delete=True
+)
+
+class DischargeForm(forms.Form):
+    room_charge = forms.DecimalField(min_value=0, decimal_places=2, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    doctor_fee = forms.DecimalField(min_value=0, decimal_places=2, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    other_charges = forms.DecimalField(min_value=0, decimal_places=2, required=False, initial=0, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    discharge_summary = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}))
+
+
+# ------------------------------------------------------------------
+# LAB REQUEST & EMR FORMS
+# ------------------------------------------------------------------
+class LabRequestForm(forms.ModelForm):
+    class Meta:
+        model = LabRequest
+        fields = ['test_name']
+        widgets = {'test_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Full Blood Count'})}
+
+LabRequestFormSet = inlineformset_factory(PatientEMR, LabRequest, form=LabRequestForm, extra=2, can_delete=True)
+
+# forms.py (replace the old LabResultForm with this)
+
+from django import forms
+from django.forms import inlineformset_factory
+from .models import LabResult, LabResultValue, LabTestPanel
+
+
+class LabResultPanelForm(forms.ModelForm):
+    """
+    Form for selecting the lab panel and adding overall info/comment
+    Used when lab technician performs a panel test
+    """
+    class Meta:
+        model = LabResult
+        fields = ['panel', 'date_performed', 'overall_comment']
+        widgets = {
+            'panel': forms.Select(attrs={'class': 'form-control'}),
+            'date_performed': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'overall_comment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, lab_request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Optional: pre-select panel if coming from a LabRequest
+        if lab_request and lab_request.panel:
+            self.fields['panel'].initial = lab_request.panel
+            self.fields['panel'].widget.attrs['readonly'] = True  # optional
+
+
+# Inline formset for entering values of each sub-test
+# This will be used after selecting a panel
+LabResultValueFormSet = inlineformset_factory(
+    parent_model=LabResult,
+    model=LabResultValue,
+    fields=('value',),
+    extra=0,                  # We will populate dynamically based on panel
+    can_delete=False,         # Usually no need to delete sub-tests
+    widgets={
+        'value': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter result value'}),
+    }
+)
+class PatientEMRForm(forms.ModelForm):
+    class Meta:
+        model = models.PatientEMR
+        fields = ['diagnosis', 'symptoms', 'treatment', 'prescription', 'notes']
+        widgets = {
+            'diagnosis': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'symptoms': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'treatment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'prescription': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }
+
+# ------------------------------------------------------------------
+# VITAL SIGNS FORM — THIS WAS MISSING!
+# ------------------------------------------------------------------
+class VitalSignsForm(forms.ModelForm):
+    class Meta:
+        model = models.VitalSigns
+        fields = [
+            'temperature',
+            'blood_pressure',
+            'pulse_rate',
+            'respiratory_rate',
+            'oxygen_saturation',
+            'weight',
+            'height',
+            'notes',
+        ]
+        widgets = {
+            'temperature': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'placeholder': 'e.g. 37.5'
+            }),
+            'blood_pressure': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. 120/80'
+            }),
+            'pulse_rate': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'bpm'
+            }),
+            'respiratory_rate': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'breaths/min'
+            }),
+            'oxygen_saturation': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': '%',
+                'min': 0,
+                'max': 100
+            }),
+            'weight': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'placeholder': 'kg'
+            }),
+            'height': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'meters'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Any additional observations...'
+            }),
+        }
 class PatientEMRForm(forms.ModelForm):
     class Meta:
         model = models.PatientEMR

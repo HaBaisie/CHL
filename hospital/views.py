@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Sum
 from datetime import datetime, timedelta, date
+from django.forms import TextInput  # ← Add this
 # App imports
 from . import models
 from . import forms
@@ -1198,52 +1199,104 @@ def lab_dashboard(request):
         'patients': patients,
         'q': q
     })
-@login_required(login_url='lab-login')
-@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
-def lab_add_result(request, request_id):
-    from .forms import LabResultForm
-    # REMOVE is_completed=False → allow viewing even if already done
-    lab_request = get_object_or_404(LabRequest, pk=request_id)
-    emr = lab_request.emr
-    # Optional: Prevent double-entry
-    if lab_request.is_completed:
-        messages.error(request, "This lab request has already been completed.")
-        return redirect('lab-pending-requests')
-    if request.method == 'POST':
-        form = LabResultForm(request.POST, lab_request=lab_request)
-        if form.is_valid():
-            result = form.save(commit=False)
-            result.patient = emr.patient
-            result.performed_by = request.user
-            result.save()
-            lab_request.is_completed = True
-            lab_request.save()
-            messages.success(request, f"Result saved for {result.test_name}")
-            return redirect('lab-pending-requests')
-    else:
-        form = LabResultForm(lab_request=lab_request)
-    return render(request, 'hospital/lab_add_result.html', {
-        'form': form,
-        'lab_request': lab_request,
-        'patient': emr.patient,
-    })
+
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponse
+from xhtml2pdf import pisa
+from io import BytesIO
+from django.template.loader import render_to_string
+from .models import Patient, LabResult, LabResultValue, LabTestPanel
+from datetime import date
+
+
 @login_required(login_url='doctor-login')
 @user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
 def doctor_view_lab_results(request, patient_id):
+    """
+    Doctor views all lab results for a patient, grouped by panel.
+    """
     patient = get_object_or_404(Patient, pk=patient_id)
-    lab_results = LabResult.objects.filter(patient=patient).order_by('-performed_at')
+    
+    # Get all results, newest first
+    lab_results = LabResult.objects.filter(patient=patient).select_related('panel').order_by('-date_performed')
+    
+    # Optional: group by date or panel (here we just pass ordered list)
     context = {
         'patient': patient,
         'lab_results': lab_results,
+        'today': date.today(),
     }
     return render(request, 'hospital/doctor_lab_results.html', context)
+
+
+def render_to_pdf(template_src, context_dict={}):
+    """
+    Helper to generate PDF from template
+    """
+    template = render_to_string(template_src, context_dict)
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(template.encode('utf-8')), result)
+    if not pdf.err:
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Lab_Report.pdf"'
+        response.write(result.getvalue())
+        return response
+    return HttpResponse("Error generating PDF", status=500)
+
+
+@login_required(login_url='doctor-login')
+@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
 def lab_report_pdf(request, result_id):
+    """
+    Generate PDF for a single LabResult (one panel)
+    """
     result = get_object_or_404(LabResult, pk=result_id)
-    return render_to_pdf('hospital/lab_report_pdf.html', {'result': result})
-# In views.py
-def lab_report_pdf(request, result_id):
-    result = get_object_or_404(LabResult, pk=result_id)
-    return render_to_pdf('hospital/lab_report_pdf.html', {'result': result})
+    
+    context = {
+        'result': result,
+        'patient': result.patient,
+        'today': date.today(),
+        'logo_url': "https://media.licdn.com/dms/image/v2/D4E0BAQEMvW03FLNo1A/company-logo_200_200/B4EZi4SXvOGUAI-/0/1755438480742?e=2147483647&v=beta&t=-s_HbIV9BGuHl7wWEQCD2d1o_SYaE390G00yww5MW94",
+        'contact_info': """
+            Contact Information<br>
+            59, Adeleke Road Lamodi Area, Offa<br>
+            Kwara State, Nigeria<br>
+            +234 803 123 4567<br>
+            info@chlhealthcare-offa.com
+        """
+    }
+    
+    return render_to_pdf('hospital/lab_report_pdf.html', context)
+
+
+@login_required(login_url='doctor-login')
+@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
+def lab_report_all_pdf(request, patient_id):
+    """
+    Generate one PDF containing ALL lab results for the patient
+    """
+    patient = get_object_or_404(Patient, pk=patient_id)
+    results = LabResult.objects.filter(patient=patient).select_related('panel').order_by('-date_performed')
+    
+    if not results.exists():
+        return HttpResponse("No lab results found for this patient.", status=404)
+    
+    context = {
+        'patient': patient,
+        'results': results,
+        'today': date.today(),
+        'logo_url': "https://media.licdn.com/dms/image/v2/D4E0BAQEMvW03FLNo1A/company-logo_200_200/B4EZi4SXvOGUAI-/0/1755438480742?e=2147483647&v=beta&t=-s_HbIV9BGuHl7wWEQCD2d1o_SYaE390G00yww5MW94",
+        'contact_info': """
+            Contact Information<br>
+            59, Adeleke Road Lamodi Area, Offa<br>
+            Kwara State, Nigeria<br>
+            +234 803 123 4567<br>
+            info@chlhealthcare-offa.com
+        """
+    }
+    
+    return render_to_pdf('hospital/lab_report_all_pdf.html', context)
 def pharmacy_signup_view(request):
     userForm = forms.PharmacyUserForm()
     pharmacyForm = forms.PharmacyForm()
@@ -1871,44 +1924,251 @@ def admin_lab_audit_view(request):
         'today': today,
     }
     return render(request, 'hospital/admin_lab_audit.html', context)
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.forms import inlineformset_factory
+from django.utils import timezone
+from django import forms
+from .models import Patient, LabRequest, LabResult, LabResultValue, LabTestPanel
+from .forms import LabResultPanelForm
 
+
+# views.py - updated lab_add_result_for_patient
 @login_required(login_url='lab-login')
 @user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
 def lab_add_result_for_patient(request, patient_id):
-    """Add lab result directly for a patient (no existing request)"""
     patient = get_object_or_404(Patient, pk=patient_id, status=True)
-    
+
+    # Store all saved results for this session (to show/print later)
+    saved_results = request.session.get(f'lab_results_{patient_id}', [])
+
     if request.method == 'POST':
-        # Use DirectLabResultForm
-        form = forms.DirectLabResultForm(request.POST)
-        
-        if form.is_valid():
+        panel_form = LabResultPanelForm(request.POST)
+
+        if panel_form.is_valid():
             try:
-                # Save form but don't commit to database yet
-                result = form.save(commit=False)
-                
-                # Set required fields
-                result.patient = patient
-                result.performed_by = request.user
-                
-                # Save to database
-                result.save()
-                
-                # FIXED: Use without parentheses
-                messages.success(request, f"Lab result saved for {patient.get_name}")
-                return redirect('lab-dashboard')
-                
+                lab_result = panel_form.save(commit=False)
+                lab_result.patient = patient
+                lab_result.performed_by = request.user
+                if not lab_result.date_performed:
+                    lab_result.date_performed = timezone.now().date()
+                lab_result.save()
+
+                subtests = lab_result.panel.subtests.order_by('sort_order')
+
+                ValueFormSet = inlineformset_factory(
+                    LabResult,
+                    LabResultValue,
+                    fields=('value',),
+                    extra=subtests.count(),
+                    can_delete=False,
+                    widgets={'value': forms.TextInput(attrs={'class': 'form-control'})},
+                )
+                value_formset = ValueFormSet(request.POST, instance=lab_result)
+
+                if value_formset.is_valid():
+                    values = value_formset.save(commit=False)
+                    for idx, value_obj in enumerate(values):
+                        if value_obj.value and value_obj.value.strip():
+                            value_obj.subtest = subtests[idx]
+                            value_obj.save()
+
+                    # Add to session for printing
+                    saved_results.append(lab_result.id)
+                    request.session[f'lab_results_{patient_id}'] = saved_results
+
+                    messages.success(request, f"Results for '{lab_result.panel.name}' saved successfully! Add more panels or print.")
+                    # Reset forms for next panel
+                    panel_form = LabResultPanelForm()
+                    value_formset = None
+                else:
+                    messages.error(request, "Please correct the values below.")
             except Exception as e:
-                messages.error(request, f"Error saving result: {str(e)}")
-                print(f"Error: {str(e)}")
+                messages.error(request, f"Error saving: {str(e)}")
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, "Please select a valid panel and date.")
     else:
-        # GET request - create empty form
-        form = forms.DirectLabResultForm()
-    
-    return render(request, 'hospital/lab_add_resultn.html', {
-        'form': form,
+        panel_form = LabResultPanelForm()
+
+    panels = LabTestPanel.objects.filter(is_active=True)
+
+    context = {
         'patient': patient,
-        'is_from_request': False,
+        'panel_form': panel_form,
+        'value_formset': None,  # Reset after save
+        'panels': panels,
+        'saved_results_count': len(saved_results),  # Show how many saved
+    }
+    return render(request, 'hospital/lab_add_result_for_patient.html', context)
+
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
+def lab_add_result(request, request_id):
+    """
+    Complete an existing doctor's LabRequest.
+    
+    GET:  Show pre-filled panel + sub-tests if panel exists
+    POST: Save values (or update panel/date if changed)
+    """
+    lab_request = get_object_or_404(LabRequest, pk=request_id, is_completed=False)
+    patient = lab_request.emr.patient
+
+    lab_result = None
+    value_formset = None
+    subtests = None
+
+    # Pre-fill panel if already set in request
+    initial_panel = lab_request.panel
+
+    if request.method == 'POST':
+        panel_form = LabResultPanelForm(request.POST, initial={'panel': initial_panel})
+
+        if panel_form.is_valid():
+            try:
+                lab_result = panel_form.save(commit=False)
+                lab_result.patient = patient
+                lab_result.performed_by = request.user
+                if not lab_result.date_performed:
+                    lab_result.date_performed = timezone.now().date()
+                lab_result.save()
+
+                # Mark request as completed
+                lab_request.is_completed = True
+                lab_request.save()
+
+                # Load subtests
+                if lab_result.panel:
+                    subtests = lab_result.panel.subtests.order_by('sort_order')
+
+                if subtests and subtests.exists():
+                    ValueFormSet = inlineformset_factory(
+                        LabResult,
+                        LabResultValue,
+                        fields=('value',),
+                        extra=subtests.count(),
+                        can_delete=False,
+                        widgets={
+                            'value': TextInput(attrs={'class': 'form-control'}),
+                        }
+                    )
+                    value_formset = ValueFormSet(request.POST, instance=lab_result)
+
+                    if value_formset.is_valid():
+                        values = value_formset.save(commit=False)
+                        for idx, value_obj in enumerate(values):
+                            if value_obj.value.strip():
+                                value_obj.subtest = subtests[idx]
+                                value_obj.save()
+
+                        messages.success(request, f"Request completed successfully!")
+                        return redirect('lab-pending-requests')
+                    else:
+                        messages.error(request, "Please correct the values below.")
+                else:
+                    messages.warning(request, "No sub-tests found for this panel.")
+            except Exception as e:
+                messages.error(request, f"Error completing request: {str(e)}")
+        else:
+            messages.error(request, "Please check the panel and date selection.")
+    else:
+        panel_form = LabResultPanelForm(initial={'panel': initial_panel})
+
+        # Pre-populate formset if panel is already known
+        if initial_panel:
+            subtests = initial_panel.subtests.order_by('sort_order')
+            if subtests.exists():
+                ValueFormSet = inlineformset_factory(
+                    LabResult,
+                    LabResultValue,
+                    fields=('value',),
+                    extra=subtests.count(),
+                    can_delete=False,
+                    widgets={
+                        'value': TextInput(attrs={'class': 'form-control'}),
+                    }
+                )
+                value_formset = ValueFormSet(instance=LabResult())  # Dummy for display
+                # Pre-fill subtest info for template
+                for idx, form in enumerate(value_formset.forms):
+                    if idx < subtests.count():
+                        form.instance.subtest = subtests[idx]
+
+    context = {
+        'lab_request': lab_request,
+        'patient': patient,
+        'panel_form': panel_form,
+        'value_formset': value_formset,
+        'subtests': subtests,
+    }
+    return render(request, 'hospital/lab_add_result.html', context)
+# views.py
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+
+def get_subtest_table(request):
+    """
+    HTMX endpoint: Returns only the sub-test table HTML for the selected panel
+    """
+    if request.method == 'GET':
+        panel_id = request.GET.get('panel')
+        if panel_id:
+            try:
+                panel = LabTestPanel.objects.get(id=panel_id)
+                subtests = panel.subtests.order_by('sort_order')
+
+                # Create dummy formset just for display (no POST data yet)
+                ValueFormSet = inlineformset_factory(
+                    LabResult,
+                    LabResultValue,
+                    fields=('value',),
+                    extra=subtests.count(),
+                    can_delete=False,
+                    widgets={'value': forms.TextInput(attrs={'class': 'form-control'})},
+                )
+                formset = ValueFormSet(instance=LabResult())  # Dummy
+
+                # Pre-fill subtest info for template
+                for idx, form in enumerate(formset.forms):
+                    if idx < subtests.count():
+                        form.instance.subtest = subtests[idx]
+
+                html = render_to_string(
+                    'hospital/subtest_table.html',
+                    {'value_formset': formset, 'subtests': subtests},
+                    request=request
+                )
+                return HttpResponse(html)
+            except LabTestPanel.DoesNotExist:
+                return HttpResponse("<p class='text-danger'>Panel not found.</p>")
+    return HttpResponse("<p class='text-danger'>No panel selected.</p>")
+
+from xhtml2pdf import pisa
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from io import BytesIO
+from .models import LabResult, LabResultValue
+
+def print_lab_results(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+
+    # Get all saved results from session (or query recent ones)
+    saved_ids = request.session.get(f'lab_results_{patient_id}', [])
+    results = LabResult.objects.filter(id__in=saved_ids, patient=patient).order_by('-date_performed')
+
+    if not results.exists():
+        messages.error(request, "No results to print.")
+        return redirect('lab-dashboard')
+
+    html = render_to_string('hospital/lab_result_pdf.html', {
+        'patient': patient,
+        'results': results,
+        'today': timezone.now().date(),
     })
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Lab_Results_{patient.get_name}.pdf"'
+
+    pisa.CreatePDF(BytesIO(html.encode('utf-8')), dest=response, encoding='utf-8')
+    return response

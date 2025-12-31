@@ -83,6 +83,9 @@ urlpatterns = [
     # path('doctor-add-emr/<int:patient_id>/', views.doctor_add_emr, name='doctor-add-emr'),
     path('doctor-emr-view/<int:patient_id>/', views.doctor_emr_view, name='doctor-emr-view'),
     path('doctor-view-lab-results/<int:patient_id>/', views.doctor_view_lab_results, name='doctor-view-lab-results'),
+    path('doctor/patient/<int:patient_id>/lab-results/', views.doctor_view_lab_results, name='doctor_lab_results'),
+    path('doctor/lab-result/<int:result_id>/pdf/', views.lab_report_pdf, name='lab_report_pdf'),
+    path('doctor/patient/<int:patient_id>/lab-results/pdf-all/', views.lab_report_all_pdf, name='lab_report_all_pdf'),
 
     # ──────── PATIENT ────────
     path('patient-dashboard', views.patient_dashboard_view, name='patient-dashboard'),
@@ -139,6 +142,8 @@ urlpatterns = [
     path('doctor/emr/<int:patient_id>/<int:emr_id>/', views.doctor_manage_emr, name='doctor-edit-emr'),
     path('admin-pharmacy-audit/', views.admin_pharmacy_audit_view, name='admin-pharmacy-audit'),
     path('admin-lab-audit/', views.admin_lab_audit_view, name='admin-lab-audit'),
+    path('lab/get-subtest-table/', views.get_subtest_table, name='get_subtest_table'),
+    path('lab/print-results/<int:patient_id>/', views.print_lab_results, name='print_lab_results'),
     
     
 ]

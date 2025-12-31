@@ -1,0 +1,41 @@
+{% load widget_tweaks %}
+
+{% if value_formset and value_formset.forms %}
+    {{ value_formset.management_form }}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Sub-test</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                    <th>Reference Range</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in value_formset %}
+                    <tr>
+                        <td>
+                            <strong>{{ form.instance.subtest.name }}</strong>
+                            {% if form.instance.subtest.short_name %}
+                                <small>({{ form.instance.subtest.short_name }})</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ form.value|add_class:"form-control" }}
+                            {% if form.value.errors %}
+                                <div class="invalid-feedback d-block">{{ form.value.errors|join:", " }}</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ form.instance.subtest.unit|default:"-" }}</td>
+                        <td><small class="text-muted">{{ form.instance.subtest.reference_range|default:"-" }}</small></td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">No sub-tests available</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="text-muted text-center py-3">No sub-tests found for this panel</p>
+{% endif %}

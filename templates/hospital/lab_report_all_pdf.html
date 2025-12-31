@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Combined Lab Results - {{ patient.get_name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; font-size: 12pt; line-height: 1.5; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { max-width: 150px; margin-bottom: 10px; }
+        h1 { color: #2c3e50; margin: 0; }
+        .panel { margin: 40px 0; page-break-inside: avoid; }
+        .panel h2 { color: #2980b9; border-bottom: 2px solid #2980b9; padding-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .footer { margin-top: 80px; text-align: center; font-size: 10pt; color: #666; border-top: 1px solid #ccc; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="{{ logo_url }}" alt="CHL Hospital Logo" class="logo">
+        <h1>Combined Laboratory Results</h1>
+        <p>Patient: {{ patient.get_name }} (ID: {{ patient.id }})</p>
+        <p>Printed on: {{ today|date:"d M Y" }}</p>
+    </div>
+
+    {% for result in results %}
+        <div class="panel">
+            <h2>{{ result.panel.name }} – {{ result.date_performed|date:"d M Y" }}</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sub-test</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                        <th>Reference Range</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for value in result.values.all %}
+                        <tr>
+                            <td>{{ value.subtest.name }}</td>
+                            <td>{{ value.value }}</td>
+                            <td>{{ value.subtest.unit|default:"-" }}</td>
+                            <td>{{ value.subtest.reference_range|default:"-" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="text-center">No sub-test results</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if result.overall_comment %}
+                <p><strong>Comment:</strong> {{ result.overall_comment|linebreaks }}</p>
+            {% endif %}
+        </div>
+    {% empty %}
+        <p class="text-center">No laboratory results available.</p>
+    {% endfor %}
+
+    <div class="footer">
+        {{ contact_info|safe }}
+    </div>
+</body>
+</html>

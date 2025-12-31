@@ -1,14 +1,67 @@
-<!DOCTYPE html><html><head><title>Lab Report</title>
-<style>body{font-family:Arial;margin:2cm;}</style></head><body>
-<h2>CHL Hospital – Laboratory Report</h2>
-<p><strong>Patient:</strong> {{ result.patient.get_name }}</p>
-<p><strong>Test:</strong> {{ result.test.code }} – {{ result.test.name }}</p>
-<p><strong>Result:</strong> {{ result.result_value }}</p>
-{% if result.test.normal_range %}
-<p><strong>Normal Range:</strong> {{ result.test.normal_range }}</p>
-{% endif %}
-{% if result.remarks %}
-<p><strong>Remarks:</strong> {{ result.remarks|linebreaks }}</p>
-{% endif %}
-<p><strong>Performed on:</strong> {{ result.performed_at|date:"d M Y H:i" }}</p>
-</body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Lab Result - {{ result.panel.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; font-size: 12pt; line-height: 1.5; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { max-width: 150px; margin-bottom: 10px; }
+        h1 { color: #2c3e50; margin: 0; }
+        .info { margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .comment { margin-top: 20px; font-style: italic; color: #555; }
+        .footer { margin-top: 60px; text-align: center; font-size: 10pt; color: #666; border-top: 1px solid #ccc; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="{{ logo_url }}" alt="CHL Hospital Logo" class="logo">
+        <h1>Laboratory Result</h1>
+    </div>
+
+    <div class="info">
+        <p><strong>Patient:</strong> {{ patient.get_name }} (ID: {{ patient.id }})</p>
+        <p><strong>Panel:</strong> {{ result.panel.name }}</p>
+        <p><strong>Date Performed:</strong> {{ result.date_performed|date:"d M Y" }}</p>
+        <p><strong>Reported on:</strong> {{ today|date:"d M Y" }}</p>
+        <p><strong>Performed by:</strong> {{ result.performed_by.get_full_name|default:"Lab Team" }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Sub-test</th>
+                <th>Value</th>
+                <th>Unit</th>
+                <th>Reference Range</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for value in result.values.all %}
+                <tr>
+                    <td>{{ value.subtest.name }}</td>
+                    <td>{{ value.value }}</td>
+                    <td>{{ value.subtest.unit|default:"-" }}</td>
+                    <td>{{ value.subtest.reference_range|default:"-" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="text-center">No sub-test results recorded</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if result.overall_comment %}
+        <div class="comment">
+            <strong>Overall Comment:</strong><br>
+            {{ result.overall_comment|linebreaks }}
+        </div>
+    {% endif %}
+
+    <div class="footer">
+        {{ contact_info|safe }}
+    </div>
+</body>
+</html>

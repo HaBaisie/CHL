@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Lab Results - {{ patient.get_name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { max-width: 150px; }
+        .contact { font-size: 12px; color: #555; text-align: center; }
+        h1 { color: #2c3e50; }
+        .panel { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .comment { margin-top: 10px; font-style: italic; color: #555; }
+        .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="https://media.licdn.com/dms/image/v2/D4E0BAQEMvW03FLNo1A/company-logo_200_200/B4EZi4SXvOGUAI-/0/1755438480742?e=2147483647&v=beta&t=-s_HbIV9BGuHl7wWEQCD2d1o_SYaE390G00yww5MW94" alt="Hospital Logo" class="logo">
+        <h1>Laboratory Results</h1>
+        <p>Patient: {{ patient.get_name }} (ID: {{ patient.id }})</p>
+        <p>Date Printed: {{ today }}</p>
+    </div>
+
+    {% for result in results %}
+        <div class="panel">
+            <h3>{{ result.panel.name }}</h3>
+            <p><strong>Date Performed:</strong> {{ result.date_performed }}</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sub-test</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                        <th>Reference Range</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for value in result.values.all %}
+                        <tr>
+                            <td>{{ value.subtest.name }}</td>
+                            <td>{{ value.value }}</td>
+                            <td>{{ value.subtest.unit }}</td>
+                            <td>{{ value.subtest.reference_range }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if result.overall_comment %}
+                <p class="comment"><strong>Comment:</strong> {{ result.overall_comment }}</p>
+            {% endif %}
+        </div>
+    {% empty %}
+        <p>No results available.</p>
+    {% endfor %}
+
+    <div class="footer">
+        <p>Contact Information<br>
+        59, Adeleke Road Lamodi Area, Offa<br>
+        Kwara State, Nigeria<br>
+        +234 803 123 4567<br>
+        info@chlhealthcare-offa.com</p>
+    </div>
+</body>
+</html>
