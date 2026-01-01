@@ -1,7 +1,6 @@
-<!-- templates/hospital/doctor_manage_emr.html -->
-
 {% extends 'hospital/doctor_base.html' %}
 {% load static %}
+{% load widget_tweaks %}
 
 {% block title %}{{ action }} EMR - {{ patient.get_name }}{% endblock %}
 
@@ -16,18 +15,26 @@
         </div>
         <div class="card-body p-4">
 
-            <!-- Show Form Errors (if any) -->
-            {% if form.errors or lab_formset.errors %}
-            <div class="alert alert-danger">
+            <!-- Detailed Error Display -->
+            {% if form.errors or lab_formset.errors or lab_formset.non_form_errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <strong>Please fix the following errors:</strong>
                 <ul class="mb-0">
-                    {% for field, error in form.errors.items %}
-                        <li><strong>{{ field|capfirst }}:</strong> {{ error|striptags }}</li>
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li><strong>EMR - {{ field|capfirst }}:</strong> {{ error }}</li>
+                        {% endfor %}
                     {% endfor %}
                     {% for error in lab_formset.non_form_errors %}
-                        <li>{{ error }}</li>
+                        <li><strong>Formset:</strong> {{ error }}</li>
+                    {% endfor %}
+                    {% for form_errors in lab_formset.errors %}
+                        {% if form_errors %}
+                            <li><strong>Lab Request:</strong> {{ form_errors.as_text }}</li>
+                        {% endif %}
                     {% endfor %}
                 </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {% endif %}
 
@@ -35,26 +42,26 @@
                 {% csrf_token %}
                 {{ lab_formset.management_form }}
 
-                <!-- EMR FIELDS -->
+                <!-- EMR Fields -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Diagnosis <span class="text-danger">*</span></label>
-                        {{ form.diagnosis }}
-                        <div class="text-danger small">{{ form.diagnosis.errors }}</div>
+                        {{ form.diagnosis|add_class:"form-control" }}
+                        <div class="invalid-feedback d-block">{{ form.diagnosis.errors|join:", " }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Symptoms</label>
-                        {{ form.symptoms }}
-                        <div class="text-danger small">{{ form.symptoms.errors }}</div>
+                        {{ form.symptoms|add_class:"form-control" }}
+                        <div class="invalid-feedback d-block">{{ form.symptoms.errors|join:", " }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Treatment</label>
-                        {{ form.treatment }}
-                        <div class="text-danger small">{{ form.treatment.errors }}</div>
+                        {{ form.treatment|add_class:"form-control" }}
+                        <div class="invalid-feedback d-block">{{ form.treatment.errors|join:", " }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Date</label>
-                        <div class="form-control bg-light text-muted" style="height: 38px; display: flex; align-items: center;">
+                        <div class="form-control bg-light text-muted d-flex align-items-center" style="height: 38px;">
                             {% if emr.id %}
                                 <i class="fas fa-calendar-alt me-2"></i>
                                 {{ emr.date|date:"d M Y, h:i A" }}
@@ -65,13 +72,13 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Prescription</label>
-                        {{ form.prescription }}
-                        <div class="text-danger small">{{ form.prescription.errors }}</div>
+                        {{ form.prescription|add_class:"form-control" }}
+                        <div class="invalid-feedback d-block">{{ form.prescription.errors|join:", " }}</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Notes</label>
-                        {{ form.notes }}
-                        <div class="text-danger small">{{ form.notes.errors }}</div>
+                        {{ form.notes|add_class:"form-control" }}
+                        <div class="invalid-feedback d-block">{{ form.notes.errors|join:", " }}</div>
                     </div>
                 </div>
 
@@ -79,41 +86,56 @@
                 <hr class="my-4 border-secondary">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="text-primary mb-0">
-                        <i class="fas fa-vial me-2"></i>Order Lab Tests
+                        <i class="fas fa-vial me-2"></i> Order Lab Tests
                     </h6>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-lab">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-lab-row">
                         <i class="fas fa-plus"></i> Add Test
                     </button>
                 </div>
 
-                <div id="lab-formset">
-                    {% for lab_form in lab_formset %}
-                    <div class="row g-3 mb-2 align-items-center lab-form border rounded p-3 bg-light">
+                <div id="lab-formset-container" class="mb-4">
+                    {% for form in lab_formset %}
+                    <div class="row g-3 mb-3 align-items-center lab-row border rounded p-3 bg-light position-relative">
+                        <!-- CRITICAL FIX: Always render hidden ID field -->
+                        {{ form.id }}
+
+                        <!-- Test Name Field -->
                         <div class="col-md-8">
-                            {{ lab_form.test_name }}
-                            <div class="text-danger small">{{ lab_form.test_name.errors }}</div>
+                            {{ form.test_name|add_class:"form-control" }}
+                            <div class="invalid-feedback d-block">{{ form.test_name.errors|join:", " }}</div>
                         </div>
+
+                        <!-- Info Badge (for existing) -->
                         <div class="col-md-3 text-end">
-                            {% if lab_form.instance.pk %}
-                                <span class="badge bg-secondary">ID: {{ lab_form.instance.id }}</span>
+                            {% if form.instance.pk %}
+                                <span class="badge bg-secondary">ID: {{ form.instance.id }}</span>
                             {% endif %}
                         </div>
+
+                        <!-- Delete Checkbox (only for existing records) -->
                         <div class="col-md-1 text-end">
-                            {% if lab_form.instance.pk %}
-                                <label class="form-check">
-                                    {{ lab_form.DELETE }}
-                                    <span class="form-check-label text-danger small">Delete</span>
-                                </label>
+                            {% if form.instance.pk %}
+                                <div class="form-check">
+                                    {{ form.DELETE }}
+                                    <label class="form-check-label text-danger small ms-1">Delete</label>
+                                </div>
                             {% endif %}
                         </div>
+
+                        <!-- Remove button for newly added rows -->
+                        {% if not form.instance.pk %}
+                            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 remove-row">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        {% endif %}
                     </div>
                     {% empty %}
-                    <p class="text-muted small">No lab tests added yet. Click "Add Test" to begin.</p>
+                    <p class="text-muted text-center py-4">No lab tests added yet. Click "Add Test" to begin.</p>
                     {% endfor %}
                 </div>
 
-                <!-- ACTION BUTTONS -->
-                <div class="mt-5 d-flex justify-content-end gap-2">
+                <!-- Submit Buttons -->
+                <div class="d-flex justify-content-end gap-3">
                     <a href="{% url 'doctor-view-patient-emr' patient.id %}" 
                        class="btn btn-outline-secondary px-4">
                         <i class="fas fa-times"></i> Cancel
@@ -127,40 +149,66 @@
     </div>
 </div>
 
-<!-- Dynamic Formset JS -->
+<!-- Dynamic Add Row JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const formsetContainer = document.getElementById('lab-formset');
-    const addButton = document.getElementById('add-lab');
-    const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+    const container = document.getElementById('lab-formset-container');
+    const addButton = document.getElementById('add-lab-row');
+    const totalFormsInput = document.querySelector('[name$="-TOTAL_FORMS"]');
 
-    addButton.onclick = function () {
-        const formCount = parseInt(totalForms.value);
-        const emptyForm = formsetContainer.querySelector('.lab-form')?.outerHTML || 
-                         `<div class="row g-3 mb-2 align-items-center lab-form border rounded p-3 bg-light">
-                            <div class="col-md-8">
-                                <input type="text" name="form-${formCount}-test_name" 
-                                       class="form-control" placeholder="e.g. CBC, Blood Sugar" 
-                                       id="id_form-${formCount}-test_name">
-                            </div>
-                            <div class="col-md-4"></div>
-                          </div>`;
+    addButton.addEventListener('click', function () {
+        const formCount = parseInt(totalFormsInput.value);
 
-        const newFormHtml = emptyForm
-            .replace(/form-\d+/g, `form-${formCount}`)
-            .replace(/__prefix__/g, formCount);
+        // Clone the first existing row (it has the correct structure including hidden id)
+        let newRow = container.querySelector('.lab-row')?.cloneNode(true);
+        if (!newRow) {
+            // Fallback if no rows exist yet
+            newRow = document.createElement('div');
+            newRow.className = 'row g-3 mb-3 align-items-center lab-row border rounded p-3 bg-light position-relative';
+            newRow.innerHTML = `
+                <div class="col-md-8">
+                    <input type="text" name="form-${formCount}-test_name" class="form-control" placeholder="e.g. CBC, Blood Sugar">
+                </div>
+                <div class="col-md-3 text-end"></div>
+                <div class="col-md-1 text-end"></div>
+            `;
+        }
 
-        const div = document.createElement('div');
-        div.innerHTML = newFormHtml;
-        formsetContainer.appendChild(div.firstChild);
+        // Clear values (except hidden fields like id)
+        newRow.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach(el => {
+            el.value = '';
+        });
 
-        totalForms.value = formCount + 1;
-    };
+        // Update all field names/IDs with the new prefix
+        newRow.innerHTML = newRow.innerHTML.replace(
+            new RegExp(`form-\\d+`, 'g'), `form-${formCount}`
+        );
+
+        // Add remove button for new rows
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-sm btn-danger position-absolute top-0 end-0 m-2 remove-row';
+        removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        removeBtn.onclick = () => newRow.remove();
+        newRow.appendChild(removeBtn);
+
+        container.appendChild(newRow);
+        totalFormsInput.value = formCount + 1;
+    });
+
+    // Handle remove for dynamic rows
+    container.addEventListener('click', function(e) {
+        const removeBtn = e.target.closest('.remove-row');
+        if (removeBtn) {
+            removeBtn.closest('.lab-row').remove();
+        }
+    });
 });
 </script>
 
 <style>
-.lab-form input { border-radius: 0.375rem; }
-.form-check { margin-top: 0.5rem; }
+.lab-row { position: relative; min-height: 60px; }
+.remove-row { z-index: 10; }
+.invalid-feedback { display: block !important; }
 </style>
 {% endblock %}

@@ -1753,48 +1753,71 @@ def account_discharge_patient(request, patient_id):
         'accountant': accountant,
         'days_spent': days
     })
-# hospital/views.py
-# hospital/views.py
+
 from .forms import PatientEMRForm, LabRequestFormSet # ← ADD THIS
-# hospital/views.py
-# hospital/views.py
 @login_required(login_url='doctorlogin')
 @user_passes_test(is_doctor)
 def doctor_manage_emr(request, patient_id, emr_id=None):
     patient = get_object_or_404(models.Patient, pk=patient_id)
     doctor = models.Doctor.objects.get(user_id=request.user.id)
+
     if emr_id:
         emr = get_object_or_404(models.PatientEMR, pk=emr_id, patient=patient)
         action = "Edit"
     else:
         emr = models.PatientEMR(patient=patient, doctor=doctor)
         action = "Add"
+
+    # For edit mode: only show existing lab requests
+    if emr_id:
+        lab_requests_qs = models.LabRequest.objects.filter(emr=emr)
+    else:
+        lab_requests_qs = models.LabRequest.objects.none()  # Empty for new EMR
+
     if request.method == 'POST':
         form = forms.PatientEMRForm(request.POST, instance=emr)
-        lab_formset = forms.LabRequestFormSet(request.POST, instance=emr)
+        lab_formset = forms.LabRequestFormSet(
+            request.POST,
+            instance=emr,
+            queryset=lab_requests_qs  # ← IMPORTANT: pass existing ones when editing
+        )
+
         if form.is_valid() and lab_formset.is_valid():
-            # SAVE EMR FIRST
-            emr_obj = form.save(commit=False)
-            if not emr_obj.id: # New EMR
-                emr_obj.date = timezone.now()
-            emr_obj.save() # CRITICAL: SAVE HERE
-            # SAVE LAB REQUESTS
-            lab_requests = lab_formset.save(commit=False)
-            for req in lab_requests:
-                req.emr = emr_obj
-                req.ordered_by = doctor.user
-                req.save()
-            for obj in lab_formset.deleted_objects:
-                obj.delete()
-            messages.success(request, f"EMR {action.lower()}ed successfully!")
-            return redirect('doctor-view-patient-emr', patient_id=patient.id)
+            try:
+                # Save EMR first
+                emr_obj = form.save(commit=False)
+                if not emr_obj.id:  # New EMR
+                    emr_obj.date = timezone.now()
+                emr_obj.save()
+
+                # Save lab requests
+                lab_requests = lab_formset.save(commit=False)
+                for req in lab_requests:
+                    req.emr = emr_obj
+                    req.ordered_by = doctor.user
+                    req.save()
+
+                # Handle deletions
+                for obj in lab_formset.deleted_objects:
+                    obj.delete()
+
+                messages.success(request, f"EMR {action.lower()}ed successfully!")
+                return redirect('doctor-view-patient-emr', patient_id=patient.id)
+
+            except Exception as e:
+                messages.error(request, f"Error saving EMR: {str(e)}")
         else:
-            # DEBUG: Show form errors
-            print("EMR Form Errors:", form.errors)
-            print("Lab Formset Errors:", lab_formset.errors)
+            # Show detailed errors for debugging
+            if form.errors:
+                print("EMR Form Errors:", form.errors.as_data())
+            if lab_formset.errors:
+                print("Lab Formset Errors:", lab_formset.errors)
+            messages.error(request, "Please correct the errors below.")
+
     else:
         form = forms.PatientEMRForm(instance=emr)
-        lab_formset = forms.LabRequestFormSet(instance=emr)
+        lab_formset = forms.LabRequestFormSet(instance=emr, queryset=lab_requests_qs)
+
     context = {
         'form': form,
         'lab_formset': lab_formset,
