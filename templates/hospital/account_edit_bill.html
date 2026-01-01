@@ -37,6 +37,20 @@
             </tbody>
         </table>
 
+        <!-- New Section: Extra Charges -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Consultation Charge (₦)</label>
+                <input type="number" name="consultation_charge" class="form-control"
+                       step="0.01" min="0" placeholder="e.g. 5000.00">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Other Charges (₦)</label>
+                <input type="number" name="other_charges" class="form-control"
+                       step="0.01" min="0" placeholder="e.g. 2000.00">
+            </div>
+        </div>
+
         <div class="d-flex justify-content-end gap-3 mt-4">
             <a href="{% url 'account-dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
             <button type="submit" class="btn btn-success">Update Prices & Save</button>

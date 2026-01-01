@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from cloudinary.models import CloudinaryField
-
+from django.db.models import Sum, DecimalField
+from decimal import Decimal  # ← Add this line!
 
 departments=[('Cardiologist','Cardiologist'),
 ('Dermatologists','Dermatologists'),
@@ -257,9 +258,9 @@ class Bill(models.Model):
         ('paid', 'Paid'),
         ('cancelled', 'Cancelled')
     ], default='pending')
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # ← Add default=0.00
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    final_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    final_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     discharge_summary = models.TextField(blank=True, null=True)
     payment_method = models.CharField(max_length=20, choices=[
         ('cash', 'Cash'),
@@ -271,15 +272,14 @@ class Bill(models.Model):
     remarks = models.TextField(blank=True, null=True)
     
     def calculate_total(self):
-        # Calculate total from all bill items
-        total = self.billitem_set.aggregate(
-            total=models.Sum('total_price'))['total'] or 0
+        total = self.items.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
         self.total_amount = total
-        self.final_amount = total - self.discount
-        self.save()
-    
+        self.final_amount = total - (self.discount or Decimal('0.00'))
+        super().save(update_fields=['total_amount', 'final_amount'])
+
     def save(self, *args, **kwargs):
-        self.final_amount = self.total_amount - self.discount
+        # Remove this line — don't auto-call calculate_total here!
+        # self.calculate_total()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -386,3 +386,45 @@ class LabRequest(models.Model):
         if self.panel:
             return f"{self.panel.name} request"
         return f"{self.test_name} request"
+
+class BillItem(models.Model):
+    bill = models.ForeignKey('Bill', on_delete=models.CASCADE, related_name='items')
+    item_type = models.CharField(max_length=20, choices=[
+        ('drug', 'Pharmacy Drug'),
+        ('lab', 'Laboratory Test'),
+        ('consultation', 'Consultation Fee'),
+        ('service', 'Medical Service'),
+        ('room', 'Room Charges'),
+        ('doctor', 'Doctor Fee'),
+        ('other', 'Other Charges'),
+    ])
+    description = models.CharField(max_length=200)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    date_added = models.DateTimeField(auto_now_add=True)
+    reference_id = models.CharField(max_length=50, blank=True, null=True)
+    
+    # New links to source documents
+    pharmacy_receipt = models.ForeignKey(
+        'PharmacyReceipt',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bill_items'
+    )
+    lab_result = models.ForeignKey(
+        'LabResult',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bill_items'
+    )
+    
+    def save(self, *args, **kwargs):
+        self.total_price = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+        self.bill.calculate_total()
+
+    def __str__(self):
+        return f"{self.item_type}: {self.description} (₦{self.total_price})"

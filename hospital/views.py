@@ -538,27 +538,40 @@ from weasyprint import HTML
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 import io
+from io import BytesIO
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+
 def render_to_pdf(template_src, context_dict={}):
+    """
+    Generate PDF from a Django template using xhtml2pdf (pisa).
+    Returns HttpResponse with PDF content.
+    """
+    # Render template to HTML string
     html_string = render_to_string(template_src, context_dict)
-    html = HTML(string=html_string, base_url=None)
-   
-    # Use BytesIO to avoid file system
-    result = io.BytesIO()
-   
-    # CRITICAL: Force UTF-8 encoding
-    html.write_pdf(
-        target=result,
-        presentational_hints=True,
-        font_config=None,
-        # Add this to ensure UTF-8
+
+    # Create in-memory buffer for PDF
+    result = BytesIO()
+
+    # Generate PDF
+    pdf = pisa.pisaDocument(
+        BytesIO(html_string.encode('utf-8')),
+        result,
         encoding='utf-8'
     )
-   
+
+    if pdf.err:
+        return HttpResponse("Error generating PDF", status=500)
+
+    # Prepare response
     result.seek(0)
-    pdf = result.getvalue()
-   
-    response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = 'inline; filename="receipt.pdf"'
+    response = HttpResponse(
+        content_type='application/pdf',
+        content=result.getvalue()
+    )
+    response['Content-Disposition'] = 'inline; filename="bill.pdf"'  # or 'attachment' to force download
+
     return response
 def download_pdf_view(request,pk):
     dischargeDetails=models.PatientDischargeDetails.objects.all().filter(patientId=pk).order_by('-id')[:1]
@@ -943,49 +956,59 @@ def pharmacy_dispense(request, emr_id):
     Pharmacy staff can type any drug name, set qty & price, and generate a receipt.
     """
     emr = get_object_or_404(PatientEMR, pk=emr_id)
-    # ------------------------------------------------------------------
-    # 1. Prevent double-dispensing
-    # ------------------------------------------------------------------
+
+    # Prevent double-dispensing
     if DispensedDrug.objects.filter(emr=emr).exists():
         messages.error(request, "This prescription has already been dispensed.")
         return redirect('pharmacy-dashboard')
-    # ------------------------------------------------------------------
-    # 2. Handle POST → Save drugs + create receipt
-    # ------------------------------------------------------------------
+
     if request.method == 'POST':
         formset = DispenseDrugFormSet(request.POST, instance=emr)
         if formset.is_valid():
-            # Save each drug (commit=False so we can set extra fields)
             dispensed_drugs = formset.save(commit=False)
             grand_total = 0
             for drug in dispensed_drugs:
-                # Link to the current EMR & pharmacist
                 drug.emr = emr
                 drug.dispensed_by = request.user
-                # Save to DB
                 drug.save()
-                # Add line total
-                grand_total += drug.total() # quantity * price_per_unit
-            # ------------------------------------------------------------------
-            # 3. Create the PharmacyReceipt
-            # ------------------------------------------------------------------
+                grand_total += drug.total()
+
+            # === CREATE PHARMACY RECEIPT ===
             receipt = PharmacyReceipt.objects.create(
                 patient=emr.patient,
                 total_amount=grand_total,
                 issued_by=request.user
             )
             receipt.dispensed_drugs.set(dispensed_drugs)
-            messages.success(request, "Drugs dispensed – receipt generated!")
+
+            # === AUTO-CREATE PENDING BILL FOR ACCOUNTING ===
+            from .models import Bill, BillItem  # Import here to avoid circular import issues
+
+            bill = Bill.objects.create(
+                patient=emr.patient,
+                generated_by=None,           # Accountant will finalize
+                status='pending',
+                total_amount=0,              # Will be updated when accountant sets prices
+                discount=0,
+                final_amount=0,
+            )
+
+            BillItem.objects.create(
+                bill=bill,
+                item_type='drug',
+                description=f'Pharmacy Receipt #{receipt.id}',
+                quantity=1,
+                unit_price=grand_total,      # Full receipt amount as initial price
+                pharmacy_receipt=receipt     # Direct link to source receipt
+            )
+
+            messages.success(request, "Drugs dispensed – receipt generated and sent to Accounts!")
             return redirect('pharmacy-receipt-pdf', receipt.id)
         else:
-            # If formset invalid, fall through to re-render with errors
             messages.error(request, "Please correct the errors below.")
     else:
-        # GET request → fresh empty formset (3 blank rows)
         formset = DispenseDrugFormSet(instance=emr)
-    # ------------------------------------------------------------------
-    # 4. Render the page
-    # ------------------------------------------------------------------
+
     context = {
         'emr': emr,
         'formset': formset,
@@ -1563,38 +1586,45 @@ def account_signup_view(request):
             return redirect('account-login')
     return render(request, 'hospital/account_signup.html',
                   {'userForm': userForm, 'accountForm': accountForm})
+from decimal import Decimal
+from django.db.models import Sum
+from django.utils import timezone
+
 @login_required(login_url='account-login')
 @user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
 def account_dashboard(request):
-    pending_bills = models.Bill.objects.filter(status='pending').order_by('-generated_at')
-    recent_bills = models.Bill.objects.filter(status='paid').order_by('-generated_at')[:5]
-
     today = timezone.now().date()
-    today_total = models.Bill.objects.filter(
-        status='paid',
-        generated_at__date=today
-    ).aggregate(total=Sum('final_amount'))['total'] or 0
 
-    # Fixed & debugged pending lab items count
+    # Today's paid collection (only bills marked paid TODAY)
+    today_paid_bills = models.Bill.objects.filter(
+        status='paid',
+        generated_at__date=today  # or use a separate 'paid_at' field if you add one later
+    )
+    today_collection = today_paid_bills.aggregate(total=Sum('final_amount'))['total'] or Decimal('0.00')
+
+    # Recent paid bills/receipts (last 10 paid bills, newest first)
+    recent_paid_bills = models.Bill.objects.filter(status='paid').order_by('-generated_at')[:10]
+
+    # Pending bills
+    pending_bills = models.Bill.objects.filter(status='pending').order_by('-generated_at')
+
+    # Pending lab items count
     pending_lab_items = models.BillItem.objects.filter(
         bill__status='pending',
         item_type='lab'
     ).count()
-    
-    # Debug: Print how many lab items exist in pending bills
+
+    # Debug output (optional, remove in production)
+    print(f"DEBUG [Account Dashboard]: Today's Collection = ₦{today_collection}")
     print(f"DEBUG [Account Dashboard]: Pending lab items count = {pending_lab_items}")
-    if pending_lab_items == 0:
-        print("DEBUG: Checking all pending bills...")
-        for b in pending_bills:
-            lab_count = b.billitem_set.filter(item_type='lab').count()
-            print(f"  - Bill {b.id}: {lab_count} lab items")
 
     context = {
+        'today_collection': today_collection,
+        'recent_paid_bills': recent_paid_bills,      # Used for the receipts table
         'pending_bills': pending_bills,
-        'recent_bills': recent_bills,
-        'today_total': today_total,
         'pending_lab_items': pending_lab_items,
-        'accountant': models.Account.objects.get(user_id=request.user.id)
+        'accountant': models.Account.objects.get(user_id=request.user.id),
+        'today': today,
     }
     return render(request, 'hospital/account_dashboard.html', context)
 @login_required(login_url='account-login')
@@ -1611,50 +1641,63 @@ def account_patient_list(request):
 def generate_bill(request, patient_id):
     patient = get_object_or_404(Patient, pk=patient_id)
     accountant = models.Account.objects.get(user_id=request.user.id)
-   
+
+    pharmacy_receipts = models.PharmacyReceipt.objects.filter(
+        patient=patient, status='final'
+    ).exclude(bill_items__isnull=False)
+
+    lab_results = models.LabResult.objects.filter(
+        patient=patient
+    ).exclude(bill_items__isnull=False)
+
     if request.method == 'POST':
         form = forms.BillForm(request.POST)
         formset = forms.BillItemFormSet(request.POST)
+
         if form.is_valid() and formset.is_valid():
             bill = form.save(commit=False)
             bill.patient = patient
             bill.generated_by = accountant
             bill.save()
-           
+
             instances = formset.save(commit=False)
             for instance in instances:
                 instance.bill = bill
                 instance.save()
-           
+
             bill.calculate_total()
-            messages.success(request, 'Bill generated successfully.')
+
+            messages.success(request, f'Bill #{bill.id} generated successfully!')
             return redirect('account-bill-detail', bill_id=bill.id)
+
+        else:
+            # Improved: Show specific errors
+            if form.errors:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"Bill {field}: {error}")
+            if formset.errors:
+                for form in formset:
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            messages.error(request, f"Item {field}: {error}")
+            if formset.non_form_errors():
+                for error in formset.non_form_errors():
+                    messages.error(request, error)
+
     else:
         form = forms.BillForm()
         formset = forms.BillItemFormSet()
-       
-        # Pre-populate with pharmacy and lab charges
-        pharmacy_receipts = models.PharmacyReceipt.objects.filter(
-            patient=patient,
-            status='final'
-        ).exclude(
-            billitem__isnull=False
-        )
-       
-        lab_results = models.LabResult.objects.filter(
-            patient=patient
-        ).exclude(
-            billitem__isnull=False
-        )
-   
-    return render(request, 'hospital/account_generate_bill.html', {
+
+    context = {
         'form': form,
         'formset': formset,
         'patient': patient,
         'accountant': accountant,
         'pharmacy_receipts': pharmacy_receipts,
-        'lab_results': lab_results
-    })
+        'lab_results': lab_results,
+    }
+    return render(request, 'hospital/account_generate_bill.html', context)
 @login_required(login_url='account-login')
 @user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
 def account_bill_detail(request, bill_id):
@@ -1669,10 +1712,17 @@ def account_bill_detail(request, bill_id):
 def mark_bill_as_paid(request, bill_id):
     if request.method == 'POST':
         bill = get_object_or_404(models.Bill, pk=bill_id)
-        bill.status = 'paid'
-        bill.save()
-        messages.success(request, 'Bill marked as paid successfully.')
+        
+        if bill.status == 'pending':
+            bill.status = 'paid'
+            bill.save()
+            
+            messages.success(request, f'Bill #{bill.id} for {bill.patient.get_name} marked as Paid!')
+        else:
+            messages.warning(request, f'Bill #{bill.id} is already {bill.status}.')
+
         return redirect('account-bill-detail', bill_id=bill.id)
+    
     return redirect('account-dashboard')
 @login_required(login_url='account-login')
 @user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
@@ -2253,7 +2303,7 @@ def account_edit_bill(request, bill_id):
     accountant = models.Account.objects.get(user_id=request.user.id)
 
     if request.method == 'POST':
-        # Update prices for all lab items in this bill
+        # 1. Update prices for all lab items
         for item in bill.billitem_set.filter(item_type='lab'):
             price_key = f'price_{item.id}'
             if price_key in request.POST:
@@ -2261,20 +2311,129 @@ def account_edit_bill(request, bill_id):
                     price = float(request.POST[price_key])
                     if price >= 0:
                         item.unit_price = price
-                        item.save()  # This triggers total_price recalculation
+                        item.save()  # Triggers total_price recalculation
                         print(f"Updated price for BillItem {item.id}: {price}")
                 except ValueError:
                     messages.error(request, f"Invalid price entered for {item.description}")
 
-        # Recalculate bill total after all prices updated
+        # 2. Add Consultation Charge (if provided)
+        if 'consultation_charge' in request.POST:
+            try:
+                cons_charge = float(request.POST['consultation_charge'])
+                if cons_charge > 0:
+                    BillItem.objects.create(
+                        bill=bill,
+                        item_type='consultation',
+                        description='Consultation Fee',
+                        quantity=1,
+                        unit_price=cons_charge
+                    )
+                    print(f"Added consultation charge: ₦{cons_charge}")
+                else:
+                    messages.warning(request, "Consultation charge must be greater than 0.")
+            except ValueError:
+                messages.error(request, "Invalid consultation charge value.")
+
+        # 3. Add Other Charges (if provided)
+        if 'other_charges' in request.POST:
+            try:
+                other_charge = float(request.POST['other_charges'])
+                if other_charge > 0:
+                    BillItem.objects.create(
+                        bill=bill,
+                        item_type='other',
+                        description='Other Charges',
+                        quantity=1,
+                        unit_price=other_charge
+                    )
+                    print(f"Added other charges: ₦{other_charge}")
+                else:
+                    messages.warning(request, "Other charges must be greater than 0.")
+            except ValueError:
+                messages.error(request, "Invalid other charges value.")
+
+        # 4. Recalculate total after all changes
         bill.calculate_total()
-        messages.success(request, "Bill prices updated successfully!")
+        messages.success(request, "Bill updated successfully! Prices and charges applied.")
         return redirect('account-bill-detail', bill_id=bill.id)
 
-    # GET: Show form to edit prices
+    # GET: Show form to edit prices + add charges
     context = {
         'bill': bill,
         'accountant': accountant,
         'lab_items': bill.billitem_set.filter(item_type='lab')
     }
     return render(request, 'hospital/account_edit_bill.html', context)
+
+from django.utils import timezone
+from django.db.models import Q
+
+@login_required(login_url='account-login')
+@user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
+def account_print_patient_bills(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    
+    # Date filter
+    date_str = request.GET.get('date')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = timezone.now().date()
+            messages.error(request, "Invalid date format. Showing today's bills.")
+    else:
+        selected_date = timezone.now().date()
+
+    # Get bills for this patient on selected date (or range)
+    bills = Bill.objects.filter(
+        patient=patient,
+        generated_at__date=selected_date
+    ).order_by('-generated_at')
+
+    context = {
+        'patient': patient,
+        'bills': bills,
+        'selected_date': selected_date,
+        'today': timezone.now().date(),
+    }
+    return render(request, 'hospital/account_print_patient_bills.html', context)
+
+@login_required(login_url='account-login')
+@user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
+def print_bill_pdf(request, bill_id):
+    bill = get_object_or_404(Bill, pk=bill_id)
+    
+    context = {
+        'bill': bill,
+        'patient': bill.patient,
+        'items': bill.items.all().order_by('item_type'),  # All bill items
+        'today': timezone.now().date(),
+        'accountant': bill.generated_by.get_name if bill.generated_by else "Accounts",
+    }
+    
+    return render_to_pdf('hospital/bill_pdf.html', context)
+@login_required(login_url='account-login')
+@user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
+def patient_bill_history(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    
+    # Optional date filter
+    date_str = request.GET.get('date')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            bills = Bill.objects.filter(patient=patient, generated_at__date=selected_date)
+        except ValueError:
+            selected_date = None
+            bills = Bill.objects.filter(patient=patient)
+    else:
+        selected_date = None
+        bills = Bill.objects.filter(patient=patient).order_by('-generated_at')
+
+    context = {
+        'patient': patient,
+        'bills': bills,
+        'selected_date': selected_date,
+        'today': timezone.now().date(),
+    }
+    return render(request, 'hospital/patient_bill_history.html', context)

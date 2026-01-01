@@ -1,0 +1,52 @@
+{% extends 'hospital/admin_base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Bill History for {{ patient.get_name }}</h2>
+
+    <!-- Date Filter -->
+    <form method="get" class="mb-4">
+        <div class="input-group w-50">
+            <input type="date" name="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}">
+            <button type="submit" class="btn btn-primary">Filter by Date</button>
+            <a href="{% url 'patient-bill-history' patient.id %}" class="btn btn-secondary">Clear Filter</a>
+        </div>
+    </form>
+
+    {% if bills %}
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Bill #</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Total (₦)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bill in bills %}
+                <tr>
+                    <td>{{ bill.id }}</td>
+                    <td>{{ bill.generated_at|date:"d M Y, H:i" }}</td>
+                    <td>
+                        <span class="badge bg-{% if bill.status == 'paid' %}success{% elif bill.status == 'pending' %}warning{% else %}danger{% endif %}">
+                            {{ bill.get_status_display }}
+                        </span>
+                    </td>
+                    <td>₦{{ bill.final_amount|floatformat:2 }}</td>
+                    <td>
+                        <a href="{% url 'account-bill-detail' bill.id %}" class="btn btn-info btn-sm">View</a>
+                        <a href="{% url 'print-bill-pdf' bill.id %}" target="_blank" class="btn btn-success btn-sm">Print PDF</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-info">
+            No bills found for {{ patient.get_name }} {% if selected_date %}on {{ selected_date|date:"d M Y" }}{% endif %}.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

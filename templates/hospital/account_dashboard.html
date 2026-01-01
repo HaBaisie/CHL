@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div class="container">
+<div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="mb-0">Account Dashboard</h3>
         <div>
@@ -12,33 +12,41 @@
 
     <!-- Summary Cards -->
     <div class="row mb-4">
+        <!-- Today's Collection -->
         <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
+            <div class="card bg-success text-white shadow-sm">
+                <div class="card-body text-center">
                     <h5 class="card-title">Today's Collection</h5>
-                    <h3 class="mb-0">₦{{ today_total|floatformat:2 }}</h3>
+                    <h3 class="mb-0">₦{{ today_collection|floatformat:2 }}</h3>
+                    <small>As of {{ today|date:"d M Y" }}</small>
                 </div>
             </div>
         </div>
+
+        <!-- Pending Bills -->
         <div class="col-md-3">
-            <div class="card bg-warning text-dark">
-                <div class="card-body">
+            <div class="card bg-warning text-dark shadow-sm">
+                <div class="card-body text-center">
                     <h5 class="card-title">Pending Bills</h5>
                     <h3 class="mb-0">{{ pending_bills.count }}</h3>
                 </div>
             </div>
         </div>
+
+        <!-- Pending Lab Items -->
         <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
+            <div class="card bg-info text-white shadow-sm">
+                <div class="card-body text-center">
                     <h5 class="card-title">Pending Lab Items</h5>
                     <h3 class="mb-0">{{ pending_lab_items|default:0 }}</h3>
                 </div>
             </div>
         </div>
+
+        <!-- Quick Action -->
         <div class="col-md-3">
-            <a href="{% url 'account-patient-list' %}" class="card bg-success text-white text-decoration-none">
-                <div class="card-body">
+            <a href="{% url 'account-patient-list' %}" class="card bg-primary text-white text-decoration-none shadow-sm">
+                <div class="card-body text-center">
                     <h5 class="card-title">Generate New Bill</h5>
                     <i class="fas fa-plus fa-2x"></i>
                 </div>
@@ -46,9 +54,48 @@
         </div>
     </div>
 
+    <!-- Recent Paid Receipts / Transactions -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Recent Paid Receipts</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0 table-hover">
+                    <thead>
+                        <tr>
+                            <th>Bill #</th>
+                            <th>Patient</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in recent_paid_bills %}
+                            <tr>
+                                <td>{{ bill.id }}</td>
+                                <td>{{ bill.patient.get_name }}</td>
+                                <td>{{ bill.generated_at|date:"d/m/Y" }}</td>
+                                <td>₦{{ bill.final_amount|floatformat:2 }}</td>
+                                <td>{{ bill.get_payment_method_display|default:"N/A" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-3 text-muted">
+                                    No recent payments today.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Pending Bills -->
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
             <h5 class="mb-0">Pending Bills</h5>
             <small class="text-muted">Click "Edit Prices" to input lab test costs</small>
         </div>
@@ -83,43 +130,6 @@
                         {% empty %}
                             <tr>
                                 <td colspan="5" class="text-center py-3">No pending bills.</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Transactions -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Recent Transactions</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Bill #</th>
-                            <th>Patient</th>
-                            <th>Date</th>
-                            <th>Amount</th>
-                            <th>Payment Method</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for bill in recent_bills %}
-                            <tr>
-                                <td>{{ bill.id }}</td>
-                                <td>{{ bill.patient.get_name }}</td>
-                                <td>{{ bill.generated_at|date:"d/m/Y" }}</td>
-                                <td>₦{{ bill.final_amount|floatformat:2 }}</td>
-                                <td>{{ bill.get_payment_method_display|default:"N/A" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center py-3">No recent transactions.</td>
                             </tr>
                         {% endfor %}
                     </tbody>

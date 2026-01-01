@@ -1,122 +1,143 @@
 {% extends 'hospital/admin_base.html' %}
 {% load static %}
-{% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">Generate Bill</h3>
-        <div>
-            <span class="text-muted">{{ accountant.get_name }}</span>
-        </div>
-    </div>
 
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Patient Details</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Name:</strong> {{ patient.get_name }}</p>
-                    <p><strong>Mobile:</strong> {{ patient.mobile }}</p>
+{% block content %}
+<div class="container mt-4">
+    <h2>Generate Bill for {{ patient.get_name }}</h2>
+
+    <!-- Messages (success + errors) -->
+    {% if messages %}
+        <div class="alert-container mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-                <div class="col-md-6">
-                    <p><strong>Admit Date:</strong> {{ patient.admitDate|date:"d/m/Y" }}</p>
-                    <p><strong>Address:</strong> {{ patient.address }}</p>
-                </div>
-            </div>
+            {% endfor %}
         </div>
-    </div>
+    {% endif %}
 
     <form method="post">
         {% csrf_token %}
+
+        <!-- Patient Info -->
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Patient Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ patient.get_name }}</p>
+                        <p><strong>Mobile:</strong> {{ patient.mobile }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Admit Date:</strong> {{ patient.admitDate|date:"d/m/Y" }}</p>
+                        <p><strong>Address:</strong> {{ patient.address }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Details -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
                 <h5 class="mb-0">Bill Details</h5>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label>Payment Method</label>
+                        <label class="form-label">Payment Method</label>
                         {{ form.payment_method }}
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label>Status</label>
+                        <label class="form-label">Status</label>
                         {{ form.status }}
                     </div>
                 </div>
-                
                 <div class="mb-3">
-                    <label>Insurance Details (if applicable)</label>
+                    <label class="form-label">Insurance Details (if applicable)</label>
                     {{ form.insurance_details }}
                 </div>
+            </div>
+        </div>
 
-                <!-- Pharmacy Charges -->
+        <!-- Pending Pharmacy & Lab Charges -->
+        {% if pharmacy_receipts or lab_results %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Pending Charges (Click to Add)</h5>
+            </div>
+            <div class="card-body">
+                <!-- Pharmacy -->
                 {% if pharmacy_receipts %}
-                <div class="mb-4">
-                    <h6>Pending Pharmacy Charges</h6>
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Receipt #</th>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Add to Bill</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for receipt in pharmacy_receipts %}
-                            <tr>
-                                <td>{{ receipt.id }}</td>
-                                <td>{{ receipt.issued_at|date:"d/m/Y" }}</td>
-                                <td>₦{{ receipt.total_amount|floatformat:2 }}</td>
-                                <td>
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input pharmacy-charge" 
-                                               data-id="{{ receipt.id }}"
-                                               data-amount="{{ receipt.total_amount }}">
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <h6>Pharmacy Receipts</h6>
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Receipt #</th>
+                            <th>Date</th>
+                            <th>Amount (₦)</th>
+                            <th>Add</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for receipt in pharmacy_receipts %}
+                        <tr>
+                            <td>{{ receipt.id }}</td>
+                            <td>{{ receipt.issued_at|date:"d/m/Y" }}</td>
+                            <td>{{ receipt.total_amount|floatformat:2 }}</td>
+                            <td>
+                                <input type="checkbox" class="form-check-input pharmacy-charge"
+                                       data-id="{{ receipt.id }}"
+                                       data-description="Pharmacy Receipt #{{ receipt.id }}"
+                                       data-amount="{{ receipt.total_amount }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
                 {% endif %}
 
-                <!-- Lab Results -->
+                <!-- Lab -->
                 {% if lab_results %}
-                <div class="mb-4">
-                    <h6>Pending Lab Charges</h6>
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Test</th>
-                                <th>Date</th>
-                                <th>Add to Bill</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for result in lab_results %}
-                            <tr>
-                                <td>{{ result.test_name }}</td>
-                                <td>{{ result.performed_at|date:"d/m/Y" }}</td>
-                                <td>
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input lab-charge" 
-                                               data-id="{{ result.id }}"
-                                               data-test="{{ result.test_name }}">
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <h6>Lab Tests</h6>
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Test</th>
+                            <th>Date</th>
+                            <th>Add</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in lab_results %}
+                        <tr>
+                            <td>{{ result.test_name }}</td>
+                            <td>{{ result.performed_at|date:"d/m/Y" }}</td>
+                            <td>
+                                <input type="checkbox" class="form-check-input lab-charge"
+                                       data-id="{{ result.id }}"
+                                       data-description="Lab Test: {{ result.test_name }}"
+                                       data-amount="500"> <!-- Default price, can be changed later -->
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
                 {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
-                <h6>Bill Items</h6>
+        <!-- Bill Items -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Bill Items</h5>
+            </div>
+            <div class="card-body">
                 {{ formset.management_form }}
-                <table class="table">
+                <table class="table table-bordered table-hover" id="bill-items-table">
                     <thead>
                         <tr>
                             <th>Type</th>
@@ -128,26 +149,34 @@
                     </thead>
                     <tbody id="bill-items">
                         {% for form in formset %}
-                            <tr>
-                                <td>{{ form.item_type }}</td>
-                                <td>{{ form.description }}</td>
-                                <td>{{ form.quantity }}</td>
-                                <td>{{ form.unit_price }}</td>
-                                <td>
-                                    {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
-                                </td>
-                            </tr>
+                        <tr>
+                            <td>{{ form.item_type }}</td>
+                            <td>{{ form.description }}</td>
+                            <td>{{ form.quantity }}</td>
+                            <td>{{ form.unit_price }}</td>
+                            <td>{{ form.DELETE }}</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-                
+
+                <button type="button" class="btn btn-secondary mt-2" id="add-item">Add Another Item</button>
+            </div>
+        </div>
+
+        <!-- Remarks & Discount -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Remarks & Discount</h5>
+            </div>
+            <div class="card-body">
                 <div class="row">
-                    <div class="col-md-6">
-                        <label>Remarks</label>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Remarks</label>
                         {{ form.remarks }}
                     </div>
-                    <div class="col-md-6">
-                        <label>Discount</label>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Discount (₦)</label>
                         {{ form.discount }}
                     </div>
                 </div>
@@ -155,7 +184,7 @@
         </div>
 
         <div class="d-flex justify-content-between">
-            <a href="{% url 'account-patient-list' %}" class="btn btn-secondary">Back</a>
+            <a href="{% url 'account-patient-list' %}" class="btn btn-outline-secondary">Back</a>
             <button type="submit" class="btn btn-primary">Generate Bill</button>
         </div>
     </form>
@@ -163,51 +192,72 @@
 
 {% block extrajs %}
 <script>
-// Handle pharmacy charges
-document.querySelectorAll('.pharmacy-charge').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        if (this.checked) {
-            addBillItem('drug', 
-                       `Pharmacy Receipt #${this.dataset.id}`,
-                       1,
-                       this.dataset.amount);
-        }
+// Dynamic add item row (for manual new items)
+document.getElementById('add-item')?.addEventListener('click', function() {
+    const tableBody = document.getElementById('bill-items');
+    const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+    const newFormIndex = parseInt(totalForms.value);
+
+    // Clone the last row
+    const lastRow = tableBody.lastElementChild;
+    if (!lastRow) return;
+
+    const newRow = lastRow.cloneNode(true);
+
+    // Update names and ids for new form
+    newRow.querySelectorAll('[name]').forEach(el => {
+        el.name = el.name.replace(`-${newFormIndex-1}-`, `-${newFormIndex}-`);
     });
+
+    // Clear values
+    newRow.querySelectorAll('input, select').forEach(el => {
+        if (el.type !== 'checkbox') el.value = '';
+    });
+
+    tableBody.appendChild(newRow);
+
+    totalForms.value = newFormIndex + 1;
 });
 
-// Handle lab charges
-document.querySelectorAll('.lab-charge').forEach(checkbox => {
+// Add selected pharmacy/lab charges to bill items
+document.querySelectorAll('.pharmacy-charge, .lab-charge').forEach(checkbox => {
     checkbox.addEventListener('change', function() {
         if (this.checked) {
-            addBillItem('lab',
-                       `Lab Test: ${this.dataset.test}`,
-                       1,
-                       500); // Default price, adjust as needed
+            const type = this.classList.contains('pharmacy-charge') ? 'drug' : 'lab';
+            const description = this.dataset.description;
+            const amount = this.dataset.amount || '500';
+
+            addBillItem(type, description, 1, amount);
         }
     });
 });
 
 function addBillItem(type, description, qty, price) {
-    // Find the last form in the formset
-    const forms = document.querySelectorAll('#bill-items tr');
-    const lastForm = forms[forms.length - 1];
-    
-    // Clone it
-    const newForm = lastForm.cloneNode(true);
-    
-    // Update form elements
-    newForm.querySelector('[name$="-item_type"]').value = type;
-    newForm.querySelector('[name$="-description"]').value = description;
-    newForm.querySelector('[name$="-quantity"]').value = qty;
-    newForm.querySelector('[name$="-unit_price"]').value = price;
-    
-    // Add to table
-    document.getElementById('bill-items').appendChild(newForm);
-    
-    // Update form count
+    const tableBody = document.getElementById('bill-items');
     const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
-    totalForms.value = parseInt(totalForms.value) + 1;
+    const newFormIndex = parseInt(totalForms.value);
+
+    // Create new row
+    const newRow = document.createElement('tr');
+
+    newRow.innerHTML = `
+        <td>
+            <select name="form-${newFormIndex}-item_type" class="form-control">
+                <option value="${type}" selected>${type === 'drug' ? 'Pharmacy Drug' : 'Laboratory Test'}</option>
+            </select>
+        </td>
+        <td><input type="text" name="form-${newFormIndex}-description" value="${description}" class="form-control" required></td>
+        <td><input type="number" name="form-${newFormIndex}-quantity" value="${qty}" min="1" class="form-control" required></td>
+        <td><input type="number" name="form-${newFormIndex}-unit_price" value="${price}" step="0.01" class="form-control" required></td>
+        <td><input type="checkbox" name="form-${newFormIndex}-DELETE" class="form-check-input"></td>
+    `;
+
+    tableBody.appendChild(newRow);
+
+    // Update TOTAL_FORMS
+    totalForms.value = newFormIndex + 1;
 }
 </script>
 {% endblock %}
+
 {% endblock %}

@@ -142,7 +142,10 @@ urlpatterns = [
     path('account/bill/<int:bill_id>/edit/', views.account_edit_bill, name='account-edit-bill'),
     path('doctor/emr/<int:patient_id>/<int:emr_id>/', views.doctor_manage_emr, name='doctor-edit-emr'),
     path('admin-pharmacy-audit/', views.admin_pharmacy_audit_view, name='admin-pharmacy-audit'),
+    path('account/print-patient-bills/<int:patient_id>/', views.account_print_patient_bills, name='account-print-patient-bills'),
     path('admin-lab-audit/', views.admin_lab_audit_view, name='admin-lab-audit'),
+    path('account/print-bill/<int:bill_id>/', views.print_bill_pdf, name='print-bill-pdf'),
+    path('account/patient-bill-history/<int:patient_id>/', views.patient_bill_history, name='patient-bill-history'),
     path('lab/get-subtest-table/', views.get_subtest_table, name='get_subtest_table'),
     path('lab/print-results/<int:patient_id>/', views.print_lab_results, name='print_lab_results'),
     
