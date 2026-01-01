@@ -1,0 +1,46 @@
+{% extends 'hospital/admin_base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Edit & Price Bill #{{ bill.id }} - {{ bill.patient.get_name }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Current Price (₦)</th>
+                    <th>New Price (₦)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in lab_items %}
+                <tr>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td class="text-end">{{ item.unit_price|floatformat:2 }}</td>
+                    <td>
+                        <input type="number" name="price_{{ item.id }}" 
+                               class="form-control text-end" 
+                               step="0.01" min="0" 
+                               value="{{ item.unit_price }}" required>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center">No lab items to price yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-end gap-3 mt-4">
+            <a href="{% url 'account-dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success">Update Prices & Save</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

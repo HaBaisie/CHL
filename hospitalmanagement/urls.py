@@ -139,6 +139,7 @@ urlpatterns = [
     path('lab/pending/', views.lab_pending_requests, name='lab-pending-requests'),
     # hospital/urls.py
     path('doctor/emr/<int:patient_id>/', views.doctor_manage_emr, name='doctor-add-emr'),
+    path('account/bill/<int:bill_id>/edit/', views.account_edit_bill, name='account-edit-bill'),
     path('doctor/emr/<int:patient_id>/<int:emr_id>/', views.doctor_manage_emr, name='doctor-edit-emr'),
     path('admin-pharmacy-audit/', views.admin_pharmacy_audit_view, name='admin-pharmacy-audit'),
     path('admin-lab-audit/', views.admin_lab_audit_view, name='admin-lab-audit'),

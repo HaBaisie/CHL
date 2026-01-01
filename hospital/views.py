@@ -1566,21 +1566,34 @@ def account_signup_view(request):
 @login_required(login_url='account-login')
 @user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
 def account_dashboard(request):
-    # Show pending bills and recent transactions
     pending_bills = models.Bill.objects.filter(status='pending').order_by('-generated_at')
     recent_bills = models.Bill.objects.filter(status='paid').order_by('-generated_at')[:5]
-   
-    # Calculate totals
+
     today = timezone.now().date()
     today_total = models.Bill.objects.filter(
         status='paid',
         generated_at__date=today
     ).aggregate(total=Sum('final_amount'))['total'] or 0
-   
+
+    # Fixed & debugged pending lab items count
+    pending_lab_items = models.BillItem.objects.filter(
+        bill__status='pending',
+        item_type='lab'
+    ).count()
+    
+    # Debug: Print how many lab items exist in pending bills
+    print(f"DEBUG [Account Dashboard]: Pending lab items count = {pending_lab_items}")
+    if pending_lab_items == 0:
+        print("DEBUG: Checking all pending bills...")
+        for b in pending_bills:
+            lab_count = b.billitem_set.filter(item_type='lab').count()
+            print(f"  - Bill {b.id}: {lab_count} lab items")
+
     context = {
         'pending_bills': pending_bills,
         'recent_bills': recent_bills,
         'today_total': today_total,
+        'pending_lab_items': pending_lab_items,
         'accountant': models.Account.objects.get(user_id=request.user.id)
     }
     return render(request, 'hospital/account_dashboard.html', context)
@@ -1768,51 +1781,89 @@ def doctor_manage_emr(request, patient_id, emr_id=None):
         emr = models.PatientEMR(patient=patient, doctor=doctor)
         action = "Add"
 
-    # For edit mode: only show existing lab requests
     if emr_id:
         lab_requests_qs = models.LabRequest.objects.filter(emr=emr)
     else:
-        lab_requests_qs = models.LabRequest.objects.none()  # Empty for new EMR
+        lab_requests_qs = models.LabRequest.objects.none()
 
     if request.method == 'POST':
         form = forms.PatientEMRForm(request.POST, instance=emr)
         lab_formset = forms.LabRequestFormSet(
             request.POST,
             instance=emr,
-            queryset=lab_requests_qs  # ← IMPORTANT: pass existing ones when editing
+            queryset=lab_requests_qs
         )
 
         if form.is_valid() and lab_formset.is_valid():
             try:
-                # Save EMR first
+                # Save EMR
                 emr_obj = form.save(commit=False)
-                if not emr_obj.id:  # New EMR
+                if not emr_obj.id:
                     emr_obj.date = timezone.now()
                 emr_obj.save()
+                print(f"DEBUG: EMR {emr_obj.id} saved successfully")
 
-                # Save lab requests
+                # Save lab requests & collect NEW ones
                 lab_requests = lab_formset.save(commit=False)
+                new_requests = []
                 for req in lab_requests:
                     req.emr = emr_obj
                     req.ordered_by = doctor.user
+                    old_pk = req.pk  # Save old PK to detect new ones
                     req.save()
+                    if not old_pk:  # If no PK before save → it was new
+                        new_requests.append(req)
+                        print(f"DEBUG: New LabRequest created - ID: {req.id}, Test: {req.test_name}")
 
                 # Handle deletions
                 for obj in lab_formset.deleted_objects:
+                    print(f"DEBUG: Deleted LabRequest ID: {obj.id}")
                     obj.delete()
 
-                messages.success(request, f"EMR {action.lower()}ed successfully!")
+                # AUTO-CREATE PENDING BILL FOR NEW LAB REQUESTS
+                from .models import Bill, BillItem
+
+                if new_requests:
+                    print(f"DEBUG: {len(new_requests)} new lab requests detected → creating pending bill")
+                    bill = Bill.objects.create(
+                        patient=patient,
+                        generated_by=None,
+                        status='pending',
+                        total_amount=0,
+                        discount=0,
+                        final_amount=0,
+                    )
+                    print(f"DEBUG: Pending Bill created - ID: {bill.id}")
+
+                    for req in new_requests:
+                        item = BillItem.objects.create(
+                            bill=bill,
+                            item_type='lab',
+                            description=f'Lab Test: {req.test_name}',
+                            quantity=1,
+                            unit_price=0,  # Accountant will set later
+                            reference_id=str(req.id)
+                        )
+                        print(f"DEBUG: BillItem created - ID: {item.id}, for LabRequest {req.id}")
+
+                    messages.success(
+                        request,
+                        f"EMR {action.lower()}ed successfully! "
+                        f"{len(new_requests)} new lab test(s) sent to Accounts for pricing."
+                    )
+                else:
+                    print("DEBUG: No new lab requests detected")
+                    messages.success(request, f"EMR {action.lower()}ed successfully!")
+
                 return redirect('doctor-view-patient-emr', patient_id=patient.id)
 
             except Exception as e:
+                print(f"ERROR saving EMR: {str(e)}")
                 messages.error(request, f"Error saving EMR: {str(e)}")
         else:
-            # Show detailed errors for debugging
-            if form.errors:
-                print("EMR Form Errors:", form.errors.as_data())
+            messages.error(request, "Please correct the errors below.")
             if lab_formset.errors:
                 print("Lab Formset Errors:", lab_formset.errors)
-            messages.error(request, "Please correct the errors below.")
 
     else:
         form = forms.PatientEMRForm(instance=emr)
@@ -2194,3 +2245,36 @@ def print_lab_results(request, patient_id):
 
     pisa.CreatePDF(BytesIO(html.encode('utf-8')), dest=response, encoding='utf-8')
     return response
+from .models import Bill, BillItem
+@login_required(login_url='account-login')
+@user_passes_test(lambda u: u.groups.filter(name='ACCOUNT').exists())
+def account_edit_bill(request, bill_id):
+    bill = get_object_or_404(Bill, pk=bill_id, status='pending')
+    accountant = models.Account.objects.get(user_id=request.user.id)
+
+    if request.method == 'POST':
+        # Update prices for all lab items in this bill
+        for item in bill.billitem_set.filter(item_type='lab'):
+            price_key = f'price_{item.id}'
+            if price_key in request.POST:
+                try:
+                    price = float(request.POST[price_key])
+                    if price >= 0:
+                        item.unit_price = price
+                        item.save()  # This triggers total_price recalculation
+                        print(f"Updated price for BillItem {item.id}: {price}")
+                except ValueError:
+                    messages.error(request, f"Invalid price entered for {item.description}")
+
+        # Recalculate bill total after all prices updated
+        bill.calculate_total()
+        messages.success(request, "Bill prices updated successfully!")
+        return redirect('account-bill-detail', bill_id=bill.id)
+
+    # GET: Show form to edit prices
+    context = {
+        'bill': bill,
+        'accountant': accountant,
+        'lab_items': bill.billitem_set.filter(item_type='lab')
+    }
+    return render(request, 'hospital/account_edit_bill.html', context)
