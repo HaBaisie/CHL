@@ -679,49 +679,40 @@ def doctor_patient_view(request):
 def doctor_view_patient_view(request):
     q = request.GET.get('q', '').strip()
     
-    patients = Patient.objects.filter(
-        status=True,
-        assignedDoctorId=request.user.id
-    ).select_related('user').order_by('-last_updated')
-    
-    print(f"🔍 Doctor {request.user.username} searching for: '{q}'")
-    print(f"📊 Total assigned patients: {patients.count()}")
+    # FIXED: only select_related('user') is allowed – remove 'assignedDoctor'
+    patients = Patient.objects.filter(status=True).select_related('user').order_by('-last_updated')
     
     if q:
-        # Test each filter separately (for debugging)
-        username_count = patients.filter(user__username__icontains=q).count()
-        first_name_count = patients.filter(user__first_name__icontains=q).count()
-        last_name_count = patients.filter(user__last_name__icontains=q).count()
-        mobile_count = patients.filter(mobile__icontains=q).count()
-        symptoms_count = patients.filter(symptoms__icontains=q).count()  # ← FIXED!
-        
-        print(f"🔎 Breakdown:")
-        print(f"  - Username matches: {username_count}")
-        print(f"  - First name matches: {first_name_count}")
-        print(f"  - Last name matches: {last_name_count}")
-        print(f"  - Mobile matches: {mobile_count}")
-        print(f"  - Symptoms matches: {symptoms_count}")
-        
-        # Apply the combined filter (FIXED syntax)
         patients = patients.filter(
             Q(user__username__icontains=q) |
             Q(user__first_name__icontains=q) |
             Q(user__last_name__icontains=q) |
             Q(mobile__icontains=q) |
-            Q(symptoms__icontains=q)  # ← FIXED!
+            Q(symptoms__icontains=q)
         )
-        
-        print(f"✅ Final results: {patients.count()}")
-        
-        # Show usernames of found patients
-        for p in patients:
-            print(f"   - {p.get_name()} (Username: {p.user.username})")
     
     doctor = models.Doctor.objects.get(user_id=request.user.id)
+    
+    # We still use the integer field for comparison – this is fine!
+    for patient in patients:
+        patient.is_my_patient = (patient.assignedDoctorId == request.user.id)
+    
+    # Optional: preload assigned doctors manually (less efficient but works)
+    # If you want doctor names without N+1 queries, do this:
+    doctor_ids = {p.assignedDoctorId for p in patients if p.assignedDoctorId}
+    doctors_map = {d.user_id: d for d in models.Doctor.objects.filter(user_id__in=doctor_ids)}
+    
+    for patient in patients:
+        if patient.assignedDoctorId and patient.assignedDoctorId in doctors_map:
+            patient.assigned_doctor = doctors_map[patient.assignedDoctorId]
+        else:
+            patient.assigned_doctor = None
+    
     return render(request, 'hospital/doctor_view_patient.html', {
-        'patients': patients, 
+        'patients': patients,
         'doctor': doctor,
-        'q': q
+        'q': q,
+        'showing_my_patients_only': bool(request.GET.get('my_patients')),
     })
 @login_required(login_url='doctorlogin')
 @user_passes_test(is_doctor)
