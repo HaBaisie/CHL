@@ -6,95 +6,165 @@
 {% block content %}
 
 <div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                
-                <!-- ... Header, Search, Filters remain the same ... -->
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
 
-                <!-- TABLE -->
+            <div class="card shadow border-0 rounded-3 overflow-hidden">
+
+                <!-- CARD HEADER with Search -->
+                <div class="card-header bg-white border-bottom px-4 py-3">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                        <div>
+                            <h5 class="mb-1 fw-semibold text-dark">Patient List</h5>
+                            <small class="text-muted">
+                                {% if showing_my_patients_only %}
+                                    Showing only patients assigned to you
+                                {% else %}
+                                    All active patients in the system
+                                {% endif %}
+                            </small>
+                        </div>
+
+                        <!-- Search Form -->
+                        <form method="get" class="d-flex flex-grow-1 flex-md-grow-0" style="max-width: 480px;">
+                            <div class="input-group">
+                                <input type="text"
+                                       name="q"
+                                       class="form-control border-end-0 py-2 ps-3"
+                                       placeholder="Search by name, phone, username, symptoms..."
+                                       value="{{ q|default:'' }}"
+                                       aria-label="Search patients">
+                                <button class="btn btn-primary px-4" type="submit">
+                                    <i class="fas fa-search me-1"></i> Search
+                                </button>
+                            </div>
+
+                            {% if q %}
+                            <a href="{% url 'doctor-view-patient' %}"
+                               class="btn btn-outline-secondary ms-2 d-flex align-items-center px-3"
+                               title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </a>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+
+                <!-- CARD BODY - Table or Empty State -->
                 <div class="card-body p-0">
                     {% if patients %}
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th width="50">#</th>
-                                    <th width="70">Photo</th>
+                                    <th width="50" class="text-center">#</th>
+                                    <th width="70" class="text-center">Photo</th>
                                     <th>Patient Name</th>
                                     <th>Registration No</th>
                                     <th>Assigned Doctor</th>
                                     <th>Contact</th>
                                     <th>Address</th>
-                                    <th>Bio Data</th>
-                                    <th width="220" class="text-center">Actions</th>
+                                    <th>Symptoms / Bio</th>
+                                    <th width="240" class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for patient in patients %}
                                 <tr>
-                                    <td class="text-muted">{{ forloop.counter }}</td>
-                                    <td>
+                                    <td class="text-center text-muted fw-medium">{{ forloop.counter }}</td>
+
+                                    <td class="text-center">
                                         {% if patient.profile_pic %}
-                                            <img src="{{ patient.profile_pic.url }}" 
-                                                 alt="{{ patient.get_name|default:'Patient' }}" 
+                                            <img src="{{ patient.profile_pic.url }}"
+                                                 alt="{{ patient.get_name|default:'Patient' }}"
                                                  class="rounded-circle border shadow-sm"
-                                                 width="40" height="40"
-                                                 style="object-fit: cover;">
+                                                 width="44" height="44"
+                                                 style="object-fit: cover; border-width: 2px;">
                                         {% else %}
-                                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white"
-                                                 style="width: 40px; height: 40px; font-size: 14px;">
+                                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-secondary fw-bold"
+                                                 style="width: 44px; height: 44px; font-size: 18px; border: 2px solid #dee2e6;">
                                                 {{ patient.get_name|slice:":1"|upper|default:"?" }}
                                             </div>
                                         {% endif %}
                                     </td>
+
                                     <td>
-                                        <strong>{{ patient.get_name|default:"Unknown Patient" }}</strong>
-                                        {% if patient.is_my_patient %}
-                                            <span class="badge bg-success ms-2">★ My Patient</span>
-                                        {% endif %}
+                                        <div class="d-flex align-items-center">
+                                            <strong>{{ patient.get_name|default:"Unknown Patient" }}</strong>
+                                            {% if patient.is_my_patient %}
+                                                <span class="badge bg-success-subtle text-success ms-2 px-2 py-1">
+                                                    <i class="fas fa-star me-1"></i>My Patient
+                                                </span>
+                                            {% endif %}
+                                        </div>
                                     </td>
+
                                     <td>
-                                        <code class="text-muted small">{{ patient.user.username|default:"N/A" }}</code>
+                                        <code class="small text-muted">{{ patient.user.username|default:"N/A" }}</code>
                                     </td>
+
                                     <td>
-                                        {% if patient.assignedDoctor %}
-                                            Dr. {{ patient.assignedDoctor.user.get_full_name|default:"Unnamed" }}
+                                        {% if patient.assignedDoctorId %}
+                                            {% if patient.assigned_doctor %}
+                                                Dr. {{ patient.assigned_doctor.user.get_full_name|default:"Unnamed" }}
+                                            {% else %}
+                                                <span class="text-muted small">Doctor ID: {{ patient.assignedDoctorId }}</span>
+                                            {% endif %}
                                         {% else %}
-                                            <span class="text-muted small">— Not assigned —</span>
+                                            <span class="text-muted small fst-italic">— Not assigned —</span>
                                         {% endif %}
                                     </td>
+
                                     <td>
                                         {% if patient.mobile %}
-                                            <a href="tel:{{ patient.mobile }}" class="text-decoration-none">
-                                                <i class="fas fa-phone-alt me-1 text-muted"></i>
-                                                {{ patient.mobile }}
+                                            <a href="tel:{{ patient.mobile }}" class="text-decoration-none text-dark">
+                                                <i class="fas fa-phone-alt text-muted me-1"></i>{{ patient.mobile }}
                                             </a>
                                         {% else %}
                                             <span class="text-muted">—</span>
                                         {% endif %}
                                     </td>
+
                                     <td>
-                                        <small class="text-muted">{{ patient.address|truncatechars:30|default:"Not provided" }}</small>
+                                        <small class="text-muted">{{ patient.address|truncatechars:35|default:"Not provided" }}</small>
                                     </td>
+
                                     <td>
-                                        <span class="badge bg-light text-dark">
-                                            {{ patient.symptoms|truncatechars:40|default:"No symptoms recorded" }}
+                                        <span class="badge bg-light text-dark border px-2 py-1">
+                                            {{ patient.symptoms|truncatechars:45|default:"No symptoms recorded" }}
                                         </span>
                                     </td>
+
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <a href="{% url 'doctor-view-patient-emr' patient.id %}"
                                                class="btn btn-outline-primary"
                                                title="View Electronic Medical Record">
-                                                <i class="fas fa-file-medical"></i> EMR
+                                                <i class="fas fa-file-medical me-1"></i> EMR
                                             </a>
                                             <a href="{% url 'doctor-view-patient-vitals' patient.id %}"
                                                class="btn btn-outline-info"
                                                title="View Vital Signs History">
-                                                <i class="fas fa-heartbeat"></i> Vitals
+                                                <i class="fas fa-heartbeat me-1"></i> Vitals
                                             </a>
                                         </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-5">
+                                        <i class="fas fa-users-slash fa-3x text-muted mb-3 d-block"></i>
+                                        <h6 class="text-muted mb-2">No patients found</h6>
+                                        {% if q %}
+                                            <p class="text-muted small mb-3">
+                                                No matches for "<strong>{{ q }}</strong>".
+                                            </p>
+                                            <a href="{% url 'doctor-view-patient' %}" class="btn btn-outline-primary btn-sm">
+                                                Clear search
+                                            </a>
+                                        {% else %}
+                                            <p class="text-muted small">No active patients are currently registered in the system.</p>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -102,11 +172,29 @@
                         </table>
                     </div>
                     {% else %}
-                    <!-- EMPTY STATE remains the same -->
+                    <!-- Empty state when no patients at all -->
+                    <div class="text-center py-5 my-5">
+                        <i class="fas fa-users-slash fa-4x text-muted mb-4 d-block"></i>
+                        <h5 class="text-muted">No patients found</h5>
+                        {% if q %}
+                        <p class="text-muted">
+                            No results match your search "<strong>{{ q }}</strong>".
+                            <br>
+                            <a href="{% url 'doctor-view-patient' %}" class="text-primary">Clear search</a>
+                        </p>
+                        {% else %}
+                        <p class="text-muted">There are currently no active patients in the system.</p>
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
 
-                <!-- FOOTER remains the same -->
+                <!-- Optional footer -->
+                <div class="card-footer bg-white border-0 text-center text-muted small py-3">
+                    {% if patients %}
+                        Showing {{ patients|length }} patient{{ patients|length|pluralize }}
+                    {% endif %}
+                </div>
 
             </div>
         </div>
