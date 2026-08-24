@@ -58,6 +58,11 @@
       transition: 0.3s;
     }
     .social-icons a:hover { opacity: 0.7; }
+
+    /* Keep wide tables scrollable instead of breaking the layout on small screens */
+    @media (max-width: 767.98px) {
+      table.table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
   </style>
 
   {% block extra_css %}{% endblock %}

@@ -3,8 +3,14 @@
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HMS - Django</title>
-
+  <style media="screen">
+    /* Keep wide tables scrollable instead of breaking the layout on small screens */
+    @media (max-width: 767.98px) {
+      table.table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
 </head>
 
 <body>
