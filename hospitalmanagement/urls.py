@@ -111,6 +111,7 @@ urlpatterns = [
     path('lab/add-result/<int:request_id>/', views.lab_add_result, name='lab-add-result'),
     path('lab-report-pdf/<int:result_id>/', views.lab_report_pdf, name='lab-report-pdf'),
     path('lab-send-to-account/<int:result_id>/', views.lab_send_to_account, name='lab-send-to-account'),
+    path('lab/patient/<int:patient_id>/results/', views.lab_view_results, name='lab-view-results'),
 
     # ──────── NURSE ────────
     path('nurse-signup', views.nurse_signup_view, name='nurse-signup'),

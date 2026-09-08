@@ -126,6 +126,9 @@
                         <i class="bi bi-printer"></i> Print All Results (PDF)
                     </a>
                 {% endif %}
+                <a href="{% url 'lab-view-results' patient.id %}" class="btn btn-outline-primary btn-lg ms-2">
+                    <i class="bi bi-eye"></i> View Generated Reports
+                </a>
             </div>
         </div>
     </form>

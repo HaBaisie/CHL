@@ -1256,6 +1256,23 @@ def lab_dashboard(request):
         'q': q
     })
 
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
+def lab_view_results(request, patient_id):
+    """
+    Let a lab technician view all previously generated reports for a
+    patient, regardless of who entered them or which browser session
+    they were entered in.
+    """
+    patient = get_object_or_404(Patient, pk=patient_id)
+    lab_results = LabResult.objects.filter(patient=patient).select_related(
+        'panel', 'performed_by'
+    ).prefetch_related('values__subtest').order_by('-performed_at')
+    return render(request, 'hospital/lab_view_results.html', {
+        'patient': patient,
+        'lab_results': lab_results,
+    })
+
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
@@ -1302,7 +1319,7 @@ def render_to_pdf(template_src, context_dict={}):
 
 
 @login_required(login_url='doctor-login')
-@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['DOCTOR', 'LAB']).exists())
 def lab_report_pdf(request, result_id):
     """
     Generate PDF for a single LabResult (one panel)
@@ -1327,7 +1344,7 @@ def lab_report_pdf(request, result_id):
 
 
 @login_required(login_url='doctor-login')
-@user_passes_test(lambda u: u.groups.filter(name='DOCTOR').exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['DOCTOR', 'LAB']).exists())
 def lab_report_all_pdf(request, patient_id):
     """
     Generate one PDF containing ALL lab results for the patient

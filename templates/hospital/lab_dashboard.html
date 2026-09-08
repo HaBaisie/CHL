@@ -62,9 +62,14 @@
             {% endif %}
           </small>
         </div>
-        <a href="{% url 'lab-add-result-for-patient' p.id %}" class="btn btn-primary btn-sm">
-          Add Result
-        </a>
+        <div class="d-flex gap-2">
+          <a href="{% url 'lab-add-result-for-patient' p.id %}" class="btn btn-primary btn-sm">
+            Add Result
+          </a>
+          <a href="{% url 'lab-view-results' p.id %}" class="btn btn-outline-primary btn-sm">
+            View Results
+          </a>
+        </div>
       </li>
       {% empty %}
       <li class="list-group-item text-center py-5">
