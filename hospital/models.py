@@ -148,6 +148,10 @@ class PharmacyReceipt(models.Model):
         ('final', 'Final'),
         ('cancelled', 'Cancelled')
     ], default='draft')
+    payment_method = models.CharField(max_length=20, choices=[
+        ('cash', 'Cash'),
+        ('transfer', 'Bank Transfer'),
+    ], default='cash')
 
     def __str__(self):
         return f"Receipt #{self.pk} – {self.patient.get_name} ({self.status})"

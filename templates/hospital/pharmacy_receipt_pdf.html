@@ -25,6 +25,7 @@
     <p><strong>Issued:</strong> {{ date }}</p>
     <p><strong>Receipt #:</strong> {{ receipt.id }}</p>
     <p><strong>Issued by:</strong> {{ issued_by }}</p>
+    <p><strong>Payment Method:</strong> {{ receipt.get_payment_method_display }}</p>
 
     <table>
         <thead>

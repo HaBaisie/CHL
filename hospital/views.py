@@ -934,10 +934,42 @@ def contactus_view(request):
 @login_required(login_url='pharmacy-login')
 @user_passes_test(lambda u: u.groups.filter(name='PHARMACY').exists())
 def pharmacy_dashboard(request):
-    # show pending prescriptions (EMR with prescription field filled)
-    pending = PatientEMR.objects.filter(prescription__isnull=False).exclude(
-        dispensed_drugs__isnull=False).distinct()
-    context = {'pending': pending}
+    # Show every prescription (EMR with prescription field filled) — dispensed
+    # ones stay on the list so a patient can appear multiple times (once per
+    # prescription/visit), marked as Dispensed instead of disappearing.
+    all_emrs = PatientEMR.objects.filter(
+        prescription__isnull=False
+    ).exclude(prescription='').select_related('patient', 'doctor').prefetch_related(
+        'dispensed_drugs'
+    ).order_by('-date')
+
+    dispensed_emr_ids = set(
+        DispensedDrug.objects.filter(emr__in=all_emrs).values_list('emr_id', flat=True)
+    )
+
+    receipt_by_emr_id = {}
+    for receipt in PharmacyReceipt.objects.filter(
+        dispensed_drugs__emr_id__in=dispensed_emr_ids
+    ).distinct().prefetch_related('dispensed_drugs'):
+        for drug in receipt.dispensed_drugs.all():
+            receipt_by_emr_id[drug.emr_id] = receipt
+
+    prescriptions = []
+    pending_count = 0
+    for emr in all_emrs:
+        is_dispensed = emr.id in dispensed_emr_ids
+        if not is_dispensed:
+            pending_count += 1
+        prescriptions.append({
+            'emr': emr,
+            'is_dispensed': is_dispensed,
+            'receipt': receipt_by_emr_id.get(emr.id),
+        })
+
+    context = {
+        'prescriptions': prescriptions,
+        'pending_count': pending_count,
+    }
     return render(request, 'hospital/pharmacy_dashboard.html', context)
    # <-- make sure this is the inlineformset_factory we defined
 @login_required(login_url='pharmacy-login')
@@ -953,9 +985,16 @@ def pharmacy_dispense(request, emr_id):
         messages.error(request, "This prescription has already been dispensed.")
         return redirect('pharmacy-dashboard')
 
+    payment_method = ''
+
     if request.method == 'POST':
         formset = DispenseDrugFormSet(request.POST, instance=emr)
-        if formset.is_valid():
+        payment_method = request.POST.get('payment_method', '')
+        valid_payment_method = payment_method in ('cash', 'transfer')
+
+        if not valid_payment_method:
+            messages.error(request, "Please select how the patient is paying (Cash or Transfer).")
+        elif formset.is_valid():
             dispensed_drugs = formset.save(commit=False)
             grand_total = 0
             for drug in dispensed_drugs:
@@ -968,7 +1007,8 @@ def pharmacy_dispense(request, emr_id):
             receipt = PharmacyReceipt.objects.create(
                 patient=emr.patient,
                 total_amount=grand_total,
-                issued_by=request.user
+                issued_by=request.user,
+                payment_method=payment_method,
             )
             receipt.dispensed_drugs.set(dispensed_drugs)
 
@@ -982,6 +1022,7 @@ def pharmacy_dispense(request, emr_id):
                 total_amount=0,              # Will be updated when accountant sets prices
                 discount=0,
                 final_amount=0,
+                payment_method=payment_method,
             )
 
             BillItem.objects.create(
@@ -1003,6 +1044,7 @@ def pharmacy_dispense(request, emr_id):
     context = {
         'emr': emr,
         'formset': formset,
+        'payment_method': payment_method,
     }
     return render(request, 'hospital/pharmacy_dispense.html', context)
 # -------------------------------------------------------------------------

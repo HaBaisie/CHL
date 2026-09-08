@@ -4,6 +4,7 @@
 <p>Patient: {{ receipt.patient.get_name }}</p>
 <p>Total: {{ receipt.total_amount }}</p>
 <p>Issued at: {{ receipt.issued_at }}</p>
+<p>Payment Method: {{ receipt.get_payment_method_display }}</p>
 <p>Status: {{ receipt.status }}</p>
 <a class="btn btn-secondary" href="{% url 'pharmacy-history' %}">Back to history</a>
 <a class="btn btn-warning" href="{% url 'pharmacy-edit-receipt' receipt.pk %}">Edit Receipt</a>
