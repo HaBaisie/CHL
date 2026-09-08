@@ -32,6 +32,26 @@
         </div>
     </div>
 
+    {% if saved_result_objs %}
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Panels Added This Batch ({{ saved_results_count }})</h5>
+                <a href="?clear=1" class="btn btn-sm btn-outline-light"
+                   onclick="return confirm('Start a new batch? Panels already saved will stay saved, but will no longer be included in the next print.');">
+                    Start New Batch
+                </a>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for r in saved_result_objs %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ r.panel.name }}</span>
+                        <span class="text-muted small">{{ r.date_performed }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
     <form method="post" class="needs-validation" novalidate id="lab-result-form">
         {% csrf_token %}
 

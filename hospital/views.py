@@ -2055,8 +2055,15 @@ from .forms import LabResultPanelForm
 def lab_add_result_for_patient(request, patient_id):
     patient = get_object_or_404(Patient, pk=patient_id, status=True)
 
+    session_key = f'lab_results_{patient_id}'
+
+    # Allow the technician to abandon the current batch and start fresh
+    if request.method == 'GET' and request.GET.get('clear') == '1':
+        request.session.pop(session_key, None)
+        return redirect('lab-add-result-for-patient', patient_id=patient_id)
+
     # Store all saved results for this session (to show/print later)
-    saved_results = request.session.get(f'lab_results_{patient_id}', [])
+    saved_results = request.session.get(session_key, [])
 
     if request.method == 'POST':
         panel_form = LabResultPanelForm(request.POST)
@@ -2091,7 +2098,7 @@ def lab_add_result_for_patient(request, patient_id):
 
                     # Add to session for printing
                     saved_results.append(lab_result.id)
-                    request.session[f'lab_results_{patient_id}'] = saved_results
+                    request.session[session_key] = saved_results
 
                     messages.success(request, f"Results for '{lab_result.panel.name}' saved successfully! Add more panels or print.")
                     # Reset forms for next panel
@@ -2106,7 +2113,11 @@ def lab_add_result_for_patient(request, patient_id):
     else:
         panel_form = LabResultPanelForm()
 
-    panels = LabTestPanel.objects.filter(is_active=True)
+    panels = LabTestPanel.objects.filter(is_active=True).order_by('name')
+
+    saved_result_objs = LabResult.objects.filter(
+        id__in=saved_results
+    ).select_related('panel').order_by('-performed_at')
 
     context = {
         'patient': patient,
@@ -2114,6 +2125,7 @@ def lab_add_result_for_patient(request, patient_id):
         'value_formset': None,  # Reset after save
         'panels': panels,
         'saved_results_count': len(saved_results),  # Show how many saved
+        'saved_result_objs': saved_result_objs,
     }
     return render(request, 'hospital/lab_add_result_for_patient.html', context)
 
@@ -2264,16 +2276,24 @@ from django.template.loader import render_to_string
 from io import BytesIO
 from .models import LabResult, LabResultValue
 
+@login_required(login_url='lab-login')
+@user_passes_test(lambda u: u.groups.filter(name='LAB').exists())
 def print_lab_results(request, patient_id):
     patient = get_object_or_404(Patient, pk=patient_id)
 
     # Get all saved results from session (or query recent ones)
-    saved_ids = request.session.get(f'lab_results_{patient_id}', [])
-    results = LabResult.objects.filter(id__in=saved_ids, patient=patient).order_by('-date_performed')
+    session_key = f'lab_results_{patient_id}'
+    saved_ids = request.session.get(session_key, [])
+    results = list(
+        LabResult.objects.filter(id__in=saved_ids, patient=patient)
+        .select_related('panel', 'performed_by')
+        .prefetch_related('values__subtest')
+        .order_by('-date_performed')
+    )
 
-    if not results.exists():
+    if not results:
         messages.error(request, "No results to print.")
-        return redirect('lab-dashboard')
+        return redirect('lab-add-result-for-patient', patient_id=patient_id)
 
     html = render_to_string('hospital/lab_result_pdf.html', {
         'patient': patient,
@@ -2285,6 +2305,10 @@ def print_lab_results(request, patient_id):
     response['Content-Disposition'] = f'attachment; filename="Lab_Results_{patient.get_name}.pdf"'
 
     pisa.CreatePDF(BytesIO(html.encode('utf-8')), dest=response, encoding='utf-8')
+
+    # Batch has been printed — clear it so the next visit starts a fresh batch
+    request.session.pop(session_key, None)
+
     return response
 from .models import Bill, BillItem
 @login_required(login_url='account-login')
