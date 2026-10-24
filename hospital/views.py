@@ -262,6 +262,41 @@ def admin_dashboard_view(request):
         'pendingappointmentcount': pendingappointmentcount,
     }
     return render(request, 'hospital/admin_dashboard.html', context=mydict)
+
+# -------------------------------------------------
+# BACKUP – download all data as a .zip to the admin's PC
+# -------------------------------------------------
+@login_required(login_url='adminlogin')
+@user_passes_test(is_admin)
+def admin_backup_view(request):
+    import io
+    import zipfile
+    from django.core.management import call_command
+
+    if request.method != 'POST':
+        return redirect('admin-dashboard')
+
+    # Dump every table (users, groups, patients, EMRs, bills, labs, ...) as JSON.
+    # Natural keys + excluding auto-generated tables makes it restorable with:
+    #   python manage.py loaddata chl_backup.json
+    data = io.StringIO()
+    call_command(
+        'dumpdata',
+        natural_foreign=True,
+        natural_primary=True,
+        exclude=['contenttypes', 'auth.permission', 'sessions', 'admin.logentry'],
+        indent=2,
+        stdout=data,
+    )
+
+    stamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f'chl_backup_{stamp}.json', data.getvalue())
+
+    response = HttpResponse(buffer.getvalue(), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="chl_backup_{stamp}.zip"'
+    return response
 # this view for sidebar click on admin page
 @login_required(login_url='adminlogin')
 @user_passes_test(is_admin)

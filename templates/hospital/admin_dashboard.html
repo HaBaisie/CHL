@@ -9,6 +9,19 @@
 
 <div class="container">
 
+    <!-- BACKUP BUTTON -->
+    <div class="row mb-3">
+        <div class="col-12 text-right">
+            <form method="post" action="{% url 'admin-backup' %}" class="d-inline"
+                  onsubmit="return confirm('Download a full backup of all hospital data?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-dark">
+                    <i class="fa fa-download"></i> Backup
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- OPTIONAL QUICK-ACCESS CARD (you can delete) -->
     <div class="row mb-4">
         <div class="col-md-6">
