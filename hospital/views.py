@@ -277,13 +277,13 @@ def admin_backup_view(request):
         return redirect('admin-dashboard')
 
     # Dump every table (users, groups, patients, EMRs, bills, labs, ...) as JSON.
-    # Natural keys + excluding auto-generated tables makes it restorable with:
-    #   python manage.py loaddata chl_backup.json
+    # Keep real primary keys: Patient.assignedDoctorId / Appointment ids store
+    # raw user ids, so users must keep the same id on restore. Restore with:
+    #   python manage.py migrate && python manage.py loaddata chl_backup.json
     data = io.StringIO()
     call_command(
         'dumpdata',
         natural_foreign=True,
-        natural_primary=True,
         exclude=['contenttypes', 'auth.permission', 'sessions', 'admin.logentry'],
         indent=2,
         stdout=data,
